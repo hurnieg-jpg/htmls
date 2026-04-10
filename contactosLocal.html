@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🤖 ContactUnifier AI Pro - Gestión de Claves</title>
+    <!-- Librerías (sin cambios) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <script src="https://unpkg.com/libphonenumber-js@1.10.53/bundle/libphonenumber-min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jaro-winkler@1.0.0/index.min.js"></script>
+    <style>
+        /* Estilos previos + nuevos para gestión de claves */
+        * { box-sizing: border-box; font-family: system-ui, 'Segoe UI', sans-serif; }
+        body { margin: 20px; background: #f5f7fb; color: #1e293b; }
+        .container { max-width: 1400px; margin: 0 auto; }
+        h1 { font-size: 2rem; margin-bottom: 5px; display: flex; align-items: center; gap: 10px; }
+        .subtitle { color: #64748b; margin-bottom: 25px; }
+        .panel {
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            border: 1px solid #e2e8f0;
+        }
+        .panel-title { font-weight: 600; margin-bottom: 15px; display: flex; align-items: center; gap: 8px; }
+        .api-keys-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 15px;
+        }
+        .provider-card {
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 15px;
+            background: #fafafa;
+        }
+        .provider-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+        .key-input-group {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+        .key-input-group input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 20px;
+        }
+        .key-list {
+            max-height: 120px;
+            overflow-y: auto;
+            font-size: 0.8rem;
+            background: white;
+            border-radius: 8px;
+            padding: 5px;
+            border: 1px solid #e2e8f0;
+        }
+        .key-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #e2e8f0;
+            padding: 4px 8px;
+            border-radius: 20px;
+            margin: 3px 0;
+        }
+        .key-text {
+            font-family: monospace;
+            cursor: pointer;
+        }
+        .key-actions {
+            display: flex;
+            gap: 5px;
+        }
+        .key-actions span {
+            cursor: pointer;
+            font-size: 1rem;
+        }
+        .dropzone {
+            border: 3px dashed #cbd5e1;
+            border-radius: 16px;
+            padding: 40px 20px;
+            text-align: center;
+            background: white;
+            transition: all 0.2s;
+            cursor: pointer;
+            margin-bottom: 25px;
+        }
+        .dropzone.dragover { border-color: #3b82f6; background: #eff6ff; }
+        .dropzone input { display: none; }
+        .dropzone .icon { font-size: 48px; margin-bottom: 10px; }
+        .btn {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 30px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: 0.1s;
+            border: 1px solid transparent;
+        }
+        .btn:hover { background: #2563eb; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-outline {
+            background: white;
+            color: #1e293b;
+            border: 1px solid #cbd5e1;
+        }
+        .btn-outline:hover { background: #f1f5f9; }
+        .btn-danger { background: #ef4444; color: white; }
+        .btn-danger:hover { background: #dc2626; }
+        .toolbar {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+        .progress-container { margin: 15px 0; }
+        .progress { height: 8px; background: #e2e8f0; border-radius: 10px; overflow: hidden; }
+        .progress-bar { height: 8px; background: #3b82f6; width: 0%; transition: 0.1s; }
+        .log-box {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 12px;
+            border-radius: 8px;
+            font-family: monospace;
+            max-height: 250px;
+            overflow-y: auto;
+            font-size: 0.85rem;
+        }
+        .log-info { color: #a5f3fc; }
+        .log-warning { color: #fde047; }
+        .log-error { color: #fca5a5; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px -2px rgba(0,0,0,0.05);
+        }
+        th { background: #f8fafc; padding: 12px 8px; text-align: left; font-weight: 600; border-bottom: 1px solid #e2e8f0; }
+        td { padding: 10px 8px; border-bottom: 1px solid #e2e8f0; }
+        .table-container { max-height: 500px; overflow: auto; border-radius: 12px; margin-top: 20px; }
+        .badge { background: #e2e8f0; padding: 2px 8px; border-radius: 20px; font-size: 0.8rem; }
+        .options-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 10px;
+        }
+        .modal {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background: white;
+            border-radius: 16px;
+            padding: 25px;
+            max-width: 900px;
+            max-height: 80vh;
+            overflow-y: auto;
+            width: 90%;
+        }
+        .config-actions {
+            display: flex;
+            gap: 10px;
+            margin-left: auto;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>🤖 ContactUnifier AI Pro</h1>
+    <div class="subtitle">Rotación multi-IA · Logs detallados · Deduplicación inteligente</div>
+
+    <!-- Panel de APIs -->
+    <div class="panel">
+        <div class="panel-title" style="justify-content: space-between;">
+            <span>🔑 Gestión de APIs de IA (Groq, Gemini, Claude)</span>
+            <div class="config-actions">
+                <button class="btn-outline" id="exportConfigBtn" style="padding:6px 12px;">📤 Exportar</button>
+                <button class="btn-outline" id="importConfigBtn" style="padding:6px 12px;">📥 Importar</button>
+                <input type="file" id="importConfigInput" accept=".json,application/json" style="display:none;">
+            </div>
+        </div>
+        <div class="api-keys-grid" id="apiKeysContainer"></div>
+        <div style="margin-top:15px; font-size:0.9rem; color:#64748b;">
+            ℹ️ Las claves se guardan localmente. Click en 👁️ para ver completa (5 seg).
+        </div>
+    </div>
+
+    <!-- Resto del panel de opciones y dropzone sin cambios -->
+    <!-- ... (idéntico a la versión anterior) ... -->
+
+    <div class="panel">
+        <div class="panel-title"><span>⚙️ Opciones de limpieza y deduplicación</span></div>
+        <div class="options-grid">
+            <label><input type="checkbox" id="optFixNames" checked> ✨ Corregir nombres (capitalización, tildes)</label>
+            <label><input type="checkbox" id="optFixEmails" checked> 📧 Corregir errores comunes en emails</label>
+            <label><input type="checkbox" id="optUseAIForNames" checked> 🧠 Usar IA para dividir nombres difíciles</label>
+            <label><input type="checkbox" id="optDeduplicate" checked> 🔗 Deduplicación inteligente</label>
+            <label><input type="checkbox" id="optReviewDupes" checked> 👁️ Revisar duplicados antes de fusionar</label>
+        </div>
+        <div style="margin-top:15px;">
+            <label>🔍 Umbral de similitud (0.0 - 1.0): 
+                <input type="number" id="fuzzyThreshold" min="0.7" max="1.0" step="0.01" value="0.85" style="width:80px;">
+            </label>
+            <span style="margin-left:20px;">
+                <button class="btn-outline" id="deduplicateBtn" style="padding:6px 12px;" disabled>🧹 Ejecutar deduplicación ahora</button>
+            </span>
+        </div>
+    </div>
+
+    <!-- Dropzone -->
+    <div id="dropzone" class="dropzone">
+        <div class="icon">📁</div>
+        <strong>Hacé clic para seleccionar la carpeta raíz</strong><br>
+        <span style="color:#64748b; font-size:0.9rem;">CSV, Excel (todas las hojas), TXT, VCF. Incluye subcarpetas.</span>
+        <input type="file" id="folderInput" webkitdirectory multiple>
+    </div>
+
+    <div id="fileSummary" style="margin:10px 0;"></div>
+
+    <div class="toolbar">
+        <button class="btn" id="processBtn" disabled>⚡ Iniciar procesamiento</button>
+        <button class="btn btn-outline" id="exportBtn" disabled>📥 Exportar CSV limpio</button>
+        <button class="btn btn-outline" id="clearBtn">🧹 Limpiar todo</button>
+        <span id="stats" style="margin-left:auto;"></span>
+    </div>
+
+    <div class="progress-container" id="progressContainer" style="display:none;">
+        <div style="display:flex; justify-content:space-between;">
+            <span id="progressText">Procesando...</span>
+            <span id="progressPercent">0%</span>
+        </div>
+        <div class="progress"><div id="progressBar" class="progress-bar"></div></div>
+        <button class="btn btn-danger" id="cancelBtn" style="margin-top:10px;">Cancelar</button>
+    </div>
+
+    <div class="log-box" id="logBox">
+        <div class="log-info">📋 Listo. Configurá APIs y seleccioná carpeta.</div>
+    </div>
+
+    <div class="table-container">
+        <table id="previewTable">
+            <thead>
+                <tr><th>Nombre</th><th>Apellido</th><th>Empresa</th><th>Cargo</th><th>WhatsApp</th><th>Email</th></tr>
+            </thead>
+            <tbody id="tableBody">
+                <tr><td colspan="6" style="text-align:center; padding:40px;">No hay contactos procesados.</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal para revisión de duplicados (sin cambios) -->
+<div id="dupeModal" class="modal" style="display:none;">
+    <div class="modal-content">
+        <h3>🔍 Revisar duplicados sugeridos</h3>
+        <div id="dupeGroupsContainer" style="max-height:400px; overflow-y:auto; margin:15px 0;"></div>
+        <div style="display:flex; gap:10px; justify-content:flex-end;">
+            <button class="btn-outline" id="cancelDupeBtn">Cancelar</button>
+            <button class="btn" id="applyDupeBtn">Aplicar fusiones seleccionadas</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    (() => {
+        // ---------- CONFIGURACIÓN DE PROVEEDORES IA ----------
+        const PROVIDERS = {
+            groq: {
+                name: 'Groq',
+                endpoint: 'https://api.groq.com/openai/v1/chat/completions',
+                model: 'llama-3.3-70b-versatile',
+                headers: (apiKey) => ({ 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' }),
+                body: (messages) => JSON.stringify({ model: 'llama-3.3-70b-versatile', messages, temperature: 0.1, response_format: { type: 'json_object' } }),
+                parseResponse: (data) => JSON.parse(data.choices[0].message.content)
+            },
+            gemini: {
+                name: 'Gemini',
+                endpoint: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent',
+                model: 'gemini-2.0-flash',
+                headers: (apiKey) => ({ 'Content-Type': 'application/json' }),
+                body: (messages) => {
+                    const prompt = messages.map(m => m.content).join('\n');
+                    return JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.1 } });
+                },
+                parseResponse: (data) => JSON.parse(data.candidates[0].content.parts[0].text),
+                urlWithKey: (base, apiKey) => `${base}?key=${apiKey}`
+            },
+            claude: {
+                name: 'Claude',
+                endpoint: 'https://api.anthropic.com/v1/messages',
+                model: 'claude-3-haiku-20240307',
+                headers: (apiKey) => ({ 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' }),
+                body: (messages) => {
+                    const systemMsg = messages.find(m => m.role === 'system')?.content || '';
+                    const userMsg = messages.find(m => m.role === 'user')?.content || '';
+                    return JSON.stringify({ model: 'claude-3-haiku-20240307', max_tokens: 1024, system: systemMsg, messages: [{ role: 'user', content: userMsg }] });
+                },
+                parseResponse: (data) => JSON.parse(data.content[0].text)
+            }
+        };
+
+        // Estado global
+        let apiKeys = { groq: [], gemini: [], claude: [] };
+        let allFiles = [];
+        let cleanedContacts = [];
+        let isProcessing = false;
+        let cancelRequested = false;
+        let columnMappingCache = new Map();
+        
+        // Elementos DOM (agregar los nuevos)
+        const apiKeysContainer = document.getElementById('apiKeysContainer');
+        const exportConfigBtn = document.getElementById('exportConfigBtn');
+        const importConfigBtn = document.getElementById('importConfigBtn');
+        const importConfigInput = document.getElementById('importConfigInput');
+        // ... resto de elementos igual que antes ...
+
+        // ---------- Persistencia APIs ----------
+        function loadApiKeys() {
+            const saved = localStorage.getItem('contactUnifierApiKeys_v3');
+            if (saved) {
+                try { apiKeys = JSON.parse(saved); } catch(e) {}
+            }
+            ['groq','gemini','claude'].forEach(p => { if (!apiKeys[p]) apiKeys[p] = []; });
+        }
+        function saveApiKeys() {
+            localStorage.setItem('contactUnifierApiKeys_v3', JSON.stringify(apiKeys));
+        }
+
+        // Función para mostrar clave temporalmente
+        function revealKey(element, fullKey) {
+            const originalText = element.textContent;
+            element.textContent = fullKey;
+            element.style.background = '#fef9c3';
+            setTimeout(() => {
+                element.textContent = originalText;
+                element.style.background = '';
+            }, 5000);
+        }
+
+        // Renderizar panel de APIs (mejorado)
+        function renderApiPanel() {
+            let html = '';
+            for (const [providerId, provider] of Object.entries(PROVIDERS)) {
+                const keys = apiKeys[providerId] || [];
+                html += `<div class="provider-card">
+                    <div class="provider-header"><strong>${provider.name}</strong> <span class="badge">${keys.length} clave(s)</span></div>
+                    <div class="key-input-group">
+                        <input type="password" placeholder="Nueva API Key" id="input-${providerId}" autocomplete="off">
+                        <button class="btn-outline" style="padding:6px 12px;" data-add-key="${providerId}">➕</button>
+                    </div>
+                    <div class="key-list" id="keylist-${providerId}">`;
+                keys.forEach((key, idx) => {
+                    const masked = key.slice(0,6) + '...' + key.slice(-4);
+                    html += `<div class="key-item">
+                        <span class="key-text" data-fullkey="${key}">${masked}</span>
+                        <div class="key-actions">
+                            <span class="reveal-key" data-fullkey="${key}" title="Ver clave completa">👁️</span>
+                            <span data-remove-key="${providerId}:${idx}" title="Eliminar clave">✕</span>
+                        </div>
+                    </div>`;
+                });
+                html += `</div></div>`;
+            }
+            apiKeysContainer.innerHTML = html;
+            
+            // Eventos para revelar clave
+            document.querySelectorAll('.reveal-key').forEach(el => {
+                el.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const fullKey = e.target.dataset.fullkey;
+                    const textSpan = e.target.closest('.key-item').querySelector('.key-text');
+                    revealKey(textSpan, fullKey);
+                });
+            });
+            
+            // Eventos para agregar/quitar (igual que antes)
+            document.querySelectorAll('[data-add-key]').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const provider = e.target.dataset.addKey;
+                    const input = document.getElementById(`input-${provider}`);
+                    const key = input.value.trim();
+                    if (key) {
+                        if (!apiKeys[provider].includes(key)) {
+                            apiKeys[provider].push(key);
+                            saveApiKeys();
+                            renderApiPanel();
+                            addLog(`Clave agregada para ${PROVIDERS[provider].name}`, 'info');
+                        }
+                        input.value = '';
+                    }
+                });
+            });
+            document.querySelectorAll('[data-remove-key]').forEach(el => {
+                el.addEventListener('click', (e) => {
+                    const [provider, idx] = e.target.dataset.removeKey.split(':');
+                    apiKeys[provider].splice(idx, 1);
+                    saveApiKeys();
+                    renderApiPanel();
+                    addLog(`Clave eliminada de ${PROVIDERS[provider].name}`, 'info');
+                });
+            });
+        }
+
+        // ---------- Exportar / Importar configuración ----------
+        function exportConfiguration() {
+            const dataStr = JSON.stringify(apiKeys, null, 2);
+            const blob = new Blob([dataStr], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'contact_unifier_config.json';
+            a.click();
+            URL.revokeObjectURL(url);
+            addLog('Configuración exportada.', 'info');
+        }
+
+        function importConfiguration(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const imported = JSON.parse(e.target.result);
+                    // Validar estructura básica
+                    if (imported.groq && imported.gemini && imported.claude) {
+                        apiKeys = imported;
+                        saveApiKeys();
+                        renderApiPanel();
+                        addLog('Configuración importada correctamente.', 'info');
+                    } else {
+                        throw new Error('Formato inválido');
+                    }
+                } catch (err) {
+                    addLog('Error al importar configuración: archivo no válido.', 'error');
+                }
+                importConfigInput.value = '';
+            };
+            reader.readAsText(file);
+        }
+
+        // Eventos de exportar/importar
+        exportConfigBtn.addEventListener('click', exportConfiguration);
+        importConfigBtn.addEventListener('click', () => importConfigInput.click());
+        importConfigInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                importConfiguration(e.target.files[0]);
+            }
+        });
+
+        // ---------- Logging (sin cambios) ----------
+        function addLog(msg, level = 'info') {
+            const time = new Date().toLocaleTimeString();
+            const className = `log-${level}`;
+            const line = `<div class="${className}">[${time}] ${msg}</div>`;
+            logBox.insertAdjacentHTML('beforeend', line);
+            logBox.scrollTop = logBox.scrollHeight;
+            console.log(`[${level.toUpperCase()}] ${msg}`);
+        }
+
+        // ---------- El resto del código (parseo, limpieza, deduplicación, etc.) se mantiene idéntico a la versión anterior ----------
+        // (Incluir aquí todas las funciones: parseFileSmart, parseCSV, parseExcelAllSheets, parseVCF, cleanContact, buildDupeGroups, mergeDupeGroup, performDeduplication, etc.)
+        // Por brevedad no se repite, pero deben estar presentes en el archivo final.
+
+        // Inicialización
+        loadApiKeys();
+        renderApiPanel();
+        addLog('Sistema listo. Podés ver tus claves con 👁️', 'info');
+        
+        // ... resto de inicialización de eventos (dropzone, processBtn, etc.) ...
+    })();
+</script>
+</body>
+</html>

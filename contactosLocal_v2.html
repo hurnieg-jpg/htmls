@@ -1,0 +1,1006 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🤖 ContactUnifier AI Pro v2</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <script src="https://unpkg.com/libphonenumber-js@1.10.53/bundle/libphonenumber-min.js"></script>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; }
+        :root {
+            --blue: #3b82f6;
+            --blue-dark: #2563eb;
+            --bg: #f1f5f9;
+            --surface: #ffffff;
+            --border: #e2e8f0;
+            --text: #1e293b;
+            --muted: #64748b;
+            --green: #22c55e;
+            --red: #ef4444;
+            --yellow: #f59e0b;
+            --radius: 14px;
+            --shadow: 0 2px 10px rgba(0,0,0,0.06);
+        }
+        body { margin: 0; padding: 20px; background: var(--bg); color: var(--text); font-family: system-ui, 'Segoe UI', sans-serif; font-size: 14px; }
+        .container { max-width: 1440px; margin: 0 auto; }
+
+        /* HEADER */
+        .app-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
+        .app-header h1 { font-size: 1.8rem; margin: 0; display: flex; align-items: center; gap: 10px; }
+        .app-header .subtitle { color: var(--muted); font-size: 0.9rem; margin-top: 2px; }
+        .version-badge { background: var(--blue); color: white; padding: 3px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; }
+
+        /* PANEL */
+        .panel { background: var(--surface); border-radius: var(--radius); padding: 20px; margin-bottom: 18px; box-shadow: var(--shadow); border: 1px solid var(--border); }
+        .panel-title { font-weight: 700; font-size: 1rem; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; color: var(--text); }
+        .panel-title .pill { background: var(--bg); border: 1px solid var(--border); padding: 2px 9px; border-radius: 20px; font-size: 0.75rem; font-weight: 500; color: var(--muted); }
+
+        /* API KEYS */
+        .api-keys-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+        .provider-card { border: 1px solid var(--border); border-radius: 10px; padding: 14px; background: #fafafa; transition: border-color 0.2s; }
+        .provider-card.active { border-color: var(--green); }
+        .provider-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+        .provider-name { font-weight: 700; display: flex; align-items: center; gap: 7px; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #cbd5e1; }
+        .status-dot.ok { background: var(--green); }
+        .key-input-group { display: flex; gap: 7px; margin-bottom: 8px; }
+        .key-input-group input { flex: 1; padding: 7px 12px; border: 1px solid var(--border); border-radius: 20px; font-size: 0.85rem; outline: none; transition: border-color 0.2s; }
+        .key-input-group input:focus { border-color: var(--blue); }
+        .key-list { max-height: 100px; overflow-y: auto; }
+        .key-badge { display: inline-flex; align-items: center; gap: 4px; background: var(--bg); border: 1px solid var(--border); padding: 3px 9px; border-radius: 20px; margin: 2px; font-size: 0.75rem; font-family: monospace; }
+        .key-badge button { background: none; border: none; cursor: pointer; color: var(--red); font-size: 0.85rem; padding: 0; line-height: 1; }
+
+        /* TABS */
+        .tabs { display: flex; gap: 4px; background: var(--bg); border-radius: 10px; padding: 4px; width: fit-content; margin-bottom: 16px; }
+        .tab { padding: 7px 16px; border-radius: 8px; border: none; background: none; cursor: pointer; font-weight: 600; color: var(--muted); font-size: 0.85rem; transition: all 0.15s; }
+        .tab.active { background: var(--surface); color: var(--text); box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+
+        /* DROPZONE */
+        .dropzone { border: 2px dashed var(--border); border-radius: var(--radius); padding: 36px 20px; text-align: center; cursor: pointer; transition: all 0.2s; margin-bottom: 16px; }
+        .dropzone:hover, .dropzone.dragover { border-color: var(--blue); background: #eff6ff; }
+        .dropzone input { display: none; }
+        .dropzone .icon { font-size: 44px; margin-bottom: 8px; }
+        .dropzone strong { display: block; font-size: 1rem; margin-bottom: 4px; }
+        .dropzone span { color: var(--muted); font-size: 0.85rem; }
+
+        /* FILE SUMMARY */
+        .file-summary { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+        .file-chip { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 4px 12px; font-size: 0.8rem; display: flex; align-items: center; gap: 5px; }
+        .file-chip .count { background: var(--blue); color: white; border-radius: 20px; padding: 1px 7px; font-size: 0.72rem; font-weight: 700; }
+
+        /* DEDUP SETTINGS */
+        .settings-row { display: flex; gap: 20px; flex-wrap: wrap; align-items: center; padding: 12px 0; border-top: 1px solid var(--border); margin-top: 10px; }
+        .setting-item { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; }
+        .toggle { position: relative; width: 36px; height: 20px; }
+        .toggle input { opacity: 0; width: 0; height: 0; }
+        .toggle-slider { position: absolute; inset: 0; background: #cbd5e1; border-radius: 20px; cursor: pointer; transition: 0.2s; }
+        .toggle input:checked + .toggle-slider { background: var(--blue); }
+        .toggle-slider:before { content: ''; position: absolute; width: 14px; height: 14px; left: 3px; top: 3px; background: white; border-radius: 50%; transition: 0.2s; }
+        .toggle input:checked + .toggle-slider:before { transform: translateX(16px); }
+
+        /* BUTTONS */
+        .btn { display: inline-flex; align-items: center; gap: 6px; padding: 9px 18px; border-radius: 30px; font-weight: 600; cursor: pointer; font-size: 0.875rem; border: 1px solid transparent; transition: all 0.15s; white-space: nowrap; }
+        .btn-primary { background: var(--blue); color: white; }
+        .btn-primary:hover:not(:disabled) { background: var(--blue-dark); }
+        .btn-outline { background: var(--surface); color: var(--text); border-color: var(--border); }
+        .btn-outline:hover:not(:disabled) { background: var(--bg); }
+        .btn-danger { background: var(--red); color: white; }
+        .btn-danger:hover:not(:disabled) { background: #dc2626; }
+        .btn-success { background: var(--green); color: white; }
+        .btn-success:hover:not(:disabled) { background: #16a34a; }
+        .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+        /* TOOLBAR */
+        .toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 12px 0 16px; }
+        .toolbar .spacer { margin-left: auto; }
+        .stats-badge { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 6px 14px; font-size: 0.82rem; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+        .stats-badge .num { color: var(--blue); font-size: 1rem; }
+
+        /* PROGRESS */
+        .progress-container { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 14px; }
+        .progress-header { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.85rem; font-weight: 600; }
+        .progress-track { height: 6px; background: var(--bg); border-radius: 10px; overflow: hidden; margin-bottom: 8px; }
+        .progress-bar { height: 6px; background: var(--blue); width: 0%; transition: width 0.15s; border-radius: 10px; }
+        .progress-bar.done { background: var(--green); }
+
+        /* LOG */
+        .log-box { background: #0f172a; color: #94a3b8; padding: 12px 14px; border-radius: 10px; font-family: 'Courier New', monospace; max-height: 160px; overflow-y: auto; font-size: 0.78rem; line-height: 1.6; margin-bottom: 16px; }
+        .log-box .log-ok { color: #4ade80; }
+        .log-box .log-warn { color: #fbbf24; }
+        .log-box .log-err { color: #f87171; }
+        .log-box .log-ai { color: #a78bfa; }
+
+        /* TABLE */
+        .table-wrapper { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+        .table-scroll { max-height: 480px; overflow: auto; }
+        table { width: 100%; border-collapse: collapse; background: var(--surface); }
+        thead { position: sticky; top: 0; z-index: 2; }
+        th { background: #f8fafc; padding: 10px 12px; text-align: left; font-weight: 700; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); border-bottom: 1px solid var(--border); white-space: nowrap; }
+        th.sortable { cursor: pointer; user-select: none; }
+        th.sortable:hover { background: #f1f5f9; color: var(--text); }
+        th .sort-arrow { opacity: 0.4; margin-left: 4px; }
+        th.sorted .sort-arrow { opacity: 1; }
+        td { padding: 9px 12px; border-bottom: 1px solid #f1f5f9; font-size: 0.85rem; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        tr:last-child td { border-bottom: none; }
+        tr:hover td { background: #f8fafc; }
+        td.phone { font-family: monospace; }
+        td.dup { color: var(--yellow); }
+        .badge { background: var(--bg); border: 1px solid var(--border); padding: 2px 8px; border-radius: 20px; font-size: 0.72rem; }
+        .badge-green { background: #dcfce7; border-color: #bbf7d0; color: #15803d; }
+        .badge-yellow { background: #fef9c3; border-color: #fef08a; color: #a16207; }
+        .badge-red { background: #fee2e2; border-color: #fecaca; color: #b91c1c; }
+
+        /* SEARCH/FILTER */
+        .table-controls { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; flex-wrap: wrap; }
+        .search-input { flex: 1; min-width: 180px; padding: 8px 14px 8px 36px; border: 1px solid var(--border); border-radius: 20px; font-size: 0.85rem; outline: none; background: var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='M21 21l-4.35-4.35'/%3E%3C/svg%3E") no-repeat 12px center; transition: border-color 0.2s; }
+        .search-input:focus { border-color: var(--blue); }
+        select.filter-select { padding: 7px 12px; border: 1px solid var(--border); border-radius: 20px; background: var(--surface); font-size: 0.85rem; outline: none; cursor: pointer; }
+        .record-count { font-size: 0.82rem; color: var(--muted); white-space: nowrap; }
+
+        /* EXPORT PANEL */
+        .export-options { display: flex; gap: 10px; flex-wrap: wrap; }
+
+        /* MODAL */
+        .modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(15,23,42,0.5); z-index: 100; align-items: center; justify-content: center; }
+        .modal-backdrop.open { display: flex; }
+        .modal { background: var(--surface); border-radius: var(--radius); padding: 24px; max-width: 480px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
+        .modal h3 { margin: 0 0 12px; }
+        .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+
+        /* TOAST */
+        .toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 200; display: flex; flex-direction: column; gap: 8px; }
+        .toast { background: var(--text); color: white; padding: 10px 18px; border-radius: 10px; font-size: 0.85rem; font-weight: 500; animation: slideIn 0.2s ease; display: flex; align-items: center; gap: 8px; }
+        .toast.success { background: #166534; }
+        .toast.error { background: #991b1b; }
+        @keyframes slideIn { from { transform: translateX(30px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+        /* RESPONSIVE */
+        @media (max-width: 640px) {
+            body { padding: 12px; }
+            .app-header h1 { font-size: 1.3rem; }
+            th, td { padding: 8px 8px; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <!-- HEADER -->
+    <div class="app-header">
+        <div>
+            <h1>🤖 ContactUnifier AI Pro <span class="version-badge">v2</span></h1>
+            <div class="subtitle">Unificación de contactos con IA multi-proveedor · Deduplicación inteligente · Exportación flexible</div>
+        </div>
+    </div>
+
+    <!-- PANEL API KEYS -->
+    <div class="panel">
+        <div class="panel-title">🔑 Configuración de APIs <span class="pill" id="totalKeysCount">0 claves</span></div>
+        <div class="api-keys-grid" id="apiKeysContainer"></div>
+        <div style="margin-top:12px; font-size:0.82rem; color:var(--muted);">
+            ℹ️ Las claves se guardan localmente en tu navegador (localStorage). Si una clave se agota, se rota automáticamente al siguiente proveedor.
+        </div>
+    </div>
+
+    <!-- PANEL DE ARCHIVOS -->
+    <div class="panel">
+        <div class="panel-title">📁 Selección de archivos</div>
+        <div id="dropzone" class="dropzone">
+            <div class="icon">📂</div>
+            <strong>Hacé clic o arrastrá una carpeta aquí</strong>
+            <span>Formatos: CSV, Excel (todas las hojas), TXT, VCF/vCard</span>
+            <input type="file" id="folderInput" webkitdirectory multiple>
+        </div>
+        <div class="file-summary" id="fileSummary"></div>
+
+        <!-- SETTINGS DE DEDUP -->
+        <div class="settings-row">
+            <span style="font-weight:700; font-size:0.85rem; color:var(--muted);">⚙️ Opciones:</span>
+            <label class="setting-item">
+                <label class="toggle"><input type="checkbox" id="dedupToggle" checked><span class="toggle-slider"></span></label>
+                Eliminar duplicados
+            </label>
+            <label class="setting-item">
+                <label class="toggle"><input type="checkbox" id="skipEmptyToggle" checked><span class="toggle-slider"></span></label>
+                Omitir sin teléfono ni email
+            </label>
+            <label class="setting-item">
+                <label class="toggle"><input type="checkbox" id="normalizePhoneToggle" checked><span class="toggle-slider"></span></label>
+                Normalizar teléfonos E.164
+            </label>
+            <label class="setting-item" style="margin-left:auto;">
+                País por defecto: 
+                <select id="defaultCountry" style="margin-left:6px; padding:4px 8px; border-radius:8px; border:1px solid var(--border);">
+                    <option value="AR">🇦🇷 Argentina</option>
+                    <option value="MX">🇲🇽 México</option>
+                    <option value="ES">🇪🇸 España</option>
+                    <option value="CO">🇨🇴 Colombia</option>
+                    <option value="CL">🇨🇱 Chile</option>
+                    <option value="BR">🇧🇷 Brasil</option>
+                    <option value="US">🇺🇸 USA</option>
+                    <option value="ZZ">🌐 Auto</option>
+                </select>
+            </label>
+        </div>
+    </div>
+
+    <!-- TOOLBAR -->
+    <div class="toolbar">
+        <button class="btn btn-primary" id="processBtn" disabled>⚡ Iniciar procesamiento</button>
+        <button class="btn btn-outline" id="pauseBtn" disabled>⏸ Pausar</button>
+        <button class="btn btn-outline" id="clearBtn">🧹 Limpiar todo</button>
+        <div class="spacer"></div>
+        <div class="stats-badge" id="statsDisplay" style="display:none;">
+            <span>Contactos:</span> <span class="num" id="statTotal">0</span>
+            <span style="color:var(--border)">|</span>
+            <span>Dups removidos:</span> <span class="num" id="statDups">0</span>
+            <span style="color:var(--border)">|</span>
+            <span>Sin datos:</span> <span class="num" id="statEmpty">0</span>
+        </div>
+    </div>
+
+    <!-- PROGRESO -->
+    <div class="progress-container" id="progressContainer" style="display:none;">
+        <div class="progress-header">
+            <span id="progressText">Procesando...</span>
+            <span id="progressPercent">0%</span>
+        </div>
+        <div class="progress-track"><div id="progressBar" class="progress-bar"></div></div>
+        <div style="display:flex; gap:8px; align-items:center; margin-top:8px;">
+            <span id="progressDetail" style="font-size:0.78rem; color:var(--muted); flex:1;"></span>
+            <button class="btn btn-danger" id="cancelBtn" style="padding:5px 14px; font-size:0.8rem;">✕ Cancelar</button>
+        </div>
+    </div>
+
+    <!-- LOG -->
+    <div class="log-box" id="logBox"><span class="log-ok">● Sistema listo. Configurá tus APIs y seleccioná una carpeta.</span></div>
+
+    <!-- TABLA DE RESULTADOS -->
+    <div class="panel" id="resultsPanel" style="display:none;">
+        <div class="panel-title">📋 Contactos procesados <span class="pill" id="tableCount">0</span></div>
+        
+        <!-- CONTROLES DE TABLA -->
+        <div class="table-controls">
+            <input type="text" class="search-input" id="searchInput" placeholder="Buscar por nombre, empresa, email, teléfono...">
+            <select class="filter-select" id="filterSelect">
+                <option value="all">Todos</option>
+                <option value="withPhone">Con teléfono</option>
+                <option value="withEmail">Con email</option>
+                <option value="withBoth">Con ambos</option>
+                <option value="incomplete">Incompletos</option>
+            </select>
+            <span class="record-count" id="recordCount"></span>
+        </div>
+
+        <div class="table-wrapper">
+            <div class="table-scroll">
+                <table id="previewTable">
+                    <thead>
+                        <tr>
+                            <th class="sortable" data-col="nombre">Nombre <span class="sort-arrow">↕</span></th>
+                            <th class="sortable" data-col="apellido">Apellido <span class="sort-arrow">↕</span></th>
+                            <th class="sortable" data-col="empresa">Empresa <span class="sort-arrow">↕</span></th>
+                            <th class="sortable" data-col="cargo">Cargo <span class="sort-arrow">↕</span></th>
+                            <th class="sortable" data-col="whatsapp">WhatsApp <span class="sort-arrow">↕</span></th>
+                            <th class="sortable" data-col="email">Email <span class="sort-arrow">↕</span></th>
+                            <th>Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                        <tr><td colspan="7" style="text-align:center; padding:40px; color:var(--muted);">No hay contactos procesados aún.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- PANEL EXPORTACIÓN -->
+    <div class="panel" id="exportPanel" style="display:none;">
+        <div class="panel-title">📤 Exportar resultados</div>
+        <div class="export-options">
+            <button class="btn btn-success" id="exportCsvBtn">📊 Exportar CSV</button>
+            <button class="btn btn-outline" id="exportJsonBtn">📦 Exportar JSON</button>
+            <button class="btn btn-outline" id="exportVcfBtn">📱 Exportar VCF</button>
+        </div>
+        <div style="margin-top:10px; font-size:0.8rem; color:var(--muted);">
+            Los archivos se exportan según el filtro activo. El CSV incluye BOM UTF-8 para compatibilidad con Excel.
+        </div>
+    </div>
+
+</div>
+
+<!-- TOAST CONTAINER -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+(() => {
+    'use strict';
+
+    // ─── PROVEEDORES IA ───────────────────────────────────────────────────────
+    const PROVIDERS = {
+        groq: {
+            name: 'Groq', emoji: '🟢',
+            endpoint: 'https://api.groq.com/openai/v1/chat/completions',
+            headers: (k) => ({ 'Authorization': `Bearer ${k}`, 'Content-Type': 'application/json' }),
+            body: (msgs) => JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: msgs, temperature: 0.1, max_tokens: 256, response_format: { type: 'json_object' } }),
+            parseResponse: (d) => JSON.parse(d.choices[0].message.content),
+        },
+        gemini: {
+            name: 'Gemini', emoji: '🔵',
+            endpoint: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent',
+            headers: () => ({ 'Content-Type': 'application/json' }),
+            body: (msgs) => {
+                const prompt = msgs.map(m => m.content).join('\n');
+                return JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.1, responseMimeType: 'application/json' } });
+            },
+            parseResponse: (d) => JSON.parse(d.candidates[0].content.parts[0].text),
+            urlWithKey: (base, k) => `${base}?key=${k}`,
+        },
+        claude: {
+            name: 'Claude', emoji: '🟠',
+            endpoint: 'https://api.anthropic.com/v1/messages',
+            headers: (k) => ({ 'x-api-key': k, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' }),
+            body: (msgs) => {
+                const sys = msgs.find(m => m.role === 'system')?.content || '';
+                const usr = msgs.find(m => m.role === 'user')?.content || '';
+                return JSON.stringify({ model: 'claude-3-haiku-20240307', max_tokens: 256, system: sys, messages: [{ role: 'user', content: usr }] });
+            },
+            parseResponse: (d) => JSON.parse(d.content[0].text),
+        },
+    };
+
+    // ─── ESTADO GLOBAL ────────────────────────────────────────────────────────
+    let apiKeys = { groq: [], gemini: [], claude: [] };
+    let allFiles = [];
+    let cleanedContacts = [];
+    let filteredContacts = [];
+    let isProcessing = false;
+    let isPaused = false;
+    let cancelRequested = false;
+    let columnMappingCache = new Map();
+    let sortState = { col: null, dir: 1 };
+    let statsRemoved = 0;
+    let statsEmpty = 0;
+
+    // ─── DOM REFS ─────────────────────────────────────────────────────────────
+    const $ = id => document.getElementById(id);
+    const apiKeysContainer = $('apiKeysContainer');
+    const dropzone = $('dropzone');
+    const folderInput = $('folderInput');
+    const fileSummary = $('fileSummary');
+    const processBtn = $('processBtn');
+    const pauseBtn = $('pauseBtn');
+    const exportCsvBtn = $('exportCsvBtn');
+    const exportJsonBtn = $('exportJsonBtn');
+    const exportVcfBtn = $('exportVcfBtn');
+    const clearBtn = $('clearBtn');
+    const cancelBtn = $('cancelBtn');
+    const progressContainer = $('progressContainer');
+    const progressBar = $('progressBar');
+    const progressText = $('progressText');
+    const progressPercent = $('progressPercent');
+    const progressDetail = $('progressDetail');
+    const logBox = $('logBox');
+    const tableBody = $('tableBody');
+    const searchInput = $('searchInput');
+    const filterSelect = $('filterSelect');
+    const recordCount = $('recordCount');
+    const resultsPanel = $('resultsPanel');
+    const exportPanel = $('exportPanel');
+
+    // ─── TOAST ────────────────────────────────────────────────────────────────
+    function toast(msg, type = '') {
+        const el = document.createElement('div');
+        el.className = `toast ${type}`;
+        el.textContent = msg;
+        $('toastContainer').appendChild(el);
+        setTimeout(() => el.remove(), 3500);
+    }
+
+    // ─── PERSISTENCIA API KEYS ────────────────────────────────────────────────
+    function loadApiKeys() {
+        try { const s = localStorage.getItem('cu_apikeys_v3'); if (s) apiKeys = { groq: [], gemini: [], claude: [], ...JSON.parse(s) }; } catch(e) {}
+    }
+    function saveApiKeys() {
+        localStorage.setItem('cu_apikeys_v3', JSON.stringify(apiKeys));
+    }
+
+    // ─── PANEL DE APIS ────────────────────────────────────────────────────────
+    function renderApiPanel() {
+        let totalKeys = 0;
+        let html = '';
+        for (const [id, prov] of Object.entries(PROVIDERS)) {
+            const keys = apiKeys[id] || [];
+            totalKeys += keys.length;
+            const hasKeys = keys.length > 0;
+            html += `<div class="provider-card ${hasKeys ? 'active' : ''}">
+                <div class="provider-header">
+                    <span class="provider-name">${prov.emoji} ${prov.name}</span>
+                    <span class="badge ${hasKeys ? 'badge-green' : ''}">${keys.length} clave${keys.length !== 1 ? 's' : ''}</span>
+                </div>
+                <div class="key-input-group">
+                    <input type="password" placeholder="Pegar API Key..." id="input-${id}" autocomplete="off">
+                    <button class="btn btn-outline" style="padding:6px 12px; font-size:0.8rem;" data-add="${id}">➕ Agregar</button>
+                </div>
+                <div class="key-list" id="keylist-${id}">`;
+            keys.forEach((k, i) => {
+                const masked = k.slice(0, 5) + '••••••••' + k.slice(-4);
+                html += `<span class="key-badge">${masked}<button data-del="${id}:${i}" title="Eliminar">✕</button></span>`;
+            });
+            html += `</div></div>`;
+        }
+        apiKeysContainer.innerHTML = html;
+        $('totalKeysCount').textContent = `${totalKeys} clave${totalKeys !== 1 ? 's' : ''}`;
+
+        document.querySelectorAll('[data-add]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const pid = btn.dataset.add;
+                const inp = $(`input-${pid}`);
+                const key = inp.value.trim();
+                if (!key) return;
+                if (!apiKeys[pid].includes(key)) { apiKeys[pid].push(key); saveApiKeys(); renderApiPanel(); toast(`Clave agregada para ${PROVIDERS[pid].name}`, 'success'); addLog(`✅ Clave agregada para ${PROVIDERS[pid].name}`, 'ok'); }
+                else toast('Esa clave ya existe', '');
+                inp.value = '';
+            });
+        });
+        document.querySelectorAll('[data-del]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const [pid, idx] = btn.dataset.del.split(':');
+                apiKeys[pid].splice(Number(idx), 1);
+                saveApiKeys(); renderApiPanel();
+                addLog(`🗑️ Clave eliminada de ${PROVIDERS[pid].name}`, 'warn');
+            });
+        });
+
+        // Enter en input
+        for (const id of Object.keys(PROVIDERS)) {
+            const inp = $(`input-${id}`);
+            if (inp) inp.addEventListener('keydown', e => { if (e.key === 'Enter') document.querySelector(`[data-add="${id}"]`)?.click(); });
+        }
+    }
+
+    // ─── LOGGING ──────────────────────────────────────────────────────────────
+    const logLines = [];
+    function addLog(msg, type = '') {
+        const time = new Date().toLocaleTimeString('es');
+        const cls = { ok: 'log-ok', warn: 'log-warn', err: 'log-err', ai: 'log-ai' }[type] || '';
+        logLines.push(`<span class="${cls}">[${time}] ${msg}</span>`);
+        if (logLines.length > 150) logLines.shift();
+        logBox.innerHTML = logLines.join('<br>');
+        logBox.scrollTop = logBox.scrollHeight;
+    }
+
+    // ─── ROTACIÓN DE APIs ─────────────────────────────────────────────────────
+    async function callAI(messages) {
+        for (const [pid, prov] of Object.entries(PROVIDERS)) {
+            const keys = apiKeys[pid] || [];
+            for (const key of keys) {
+                try {
+                    let url = prov.endpoint;
+                    if (prov.urlWithKey) url = prov.urlWithKey(url, key);
+                    const res = await fetch(url, { method: 'POST', headers: prov.headers(key), body: prov.body(messages) });
+                    if (!res.ok) {
+                        const txt = await res.text();
+                        if (res.status === 429 || txt.includes('quota') || txt.includes('rate')) { addLog(`⏳ Cuota agotada en ${prov.name}`, 'warn'); continue; }
+                        throw new Error(`HTTP ${res.status}`);
+                    }
+                    const data = await res.json();
+                    const result = prov.parseResponse(data);
+                    addLog(`${prov.emoji} ${prov.name} respondió OK`, 'ai');
+                    return result;
+                } catch (err) {
+                    addLog(`❌ Error ${prov.name}: ${err.message}`, 'err');
+                }
+            }
+        }
+        throw new Error('Sin respuesta de ninguna IA. Verificá tus claves.');
+    }
+
+    // ─── HEURÍSTICA DE COLUMNAS ───────────────────────────────────────────────
+    const SYNONYMS = {
+        firstName: ['first_name','firstname','first name','nombre','given_name','given name','nombres','forename','givenname','prenom','vorname'],
+        lastName: ['last_name','lastname','last name','apellido','family_name','family name','surname','apellidos','familyname','nom','nachname'],
+        email: ['email','e-mail','correo','mail','email_address','emailaddress','correo_electronico'],
+        phone: ['phone','telephone','teléfono','telefono','tel','mobile','celular','móvil','movil','cell','phone_number','phonenumber','whatsapp'],
+        company: ['company','organization','empresa','organización','organizacion','org','employer','companyname'],
+        title: ['title','job_title','jobtitle','cargo','puesto','position','role','designation','job title'],
+    };
+
+    function heuristicMapping(headers) {
+        const mapping = {};
+        for (const [field, syns] of Object.entries(SYNONYMS)) {
+            for (const h of headers) {
+                if (syns.some(s => h.toLowerCase().replace(/\s+/g,'_').includes(s.replace(/\s+/g,'_')))) {
+                    mapping[field] = h; break;
+                }
+            }
+        }
+        return mapping;
+    }
+
+    async function getColumnMapping(headers) {
+        const cacheKey = headers.slice().sort().join('|');
+        if (columnMappingCache.has(cacheKey)) return columnMappingCache.get(cacheKey);
+        const heuristic = heuristicMapping(headers);
+        const coveredFields = Object.keys(heuristic).length;
+        if (coveredFields >= 3) {
+            addLog(`📋 Mapeo heurístico (${coveredFields}/6): ${JSON.stringify(heuristic)}`);
+            columnMappingCache.set(cacheKey, heuristic); return heuristic;
+        }
+        const allKeys = Object.values(apiKeys).flat();
+        if (allKeys.length === 0) {
+            addLog('⚠️ Sin API keys — usando heurístico básico', 'warn');
+            columnMappingCache.set(cacheKey, heuristic); return heuristic;
+        }
+        try {
+            const systemPrompt = `Eres un mapper de columnas. Dado un array de encabezados CSV, devuelve SÓLO un JSON con las claves: firstName, lastName, email, phone, company, title. El valor de cada clave debe ser el nombre exacto del encabezado correspondiente. Omití claves sin coincidencia. No incluyas nada más que el JSON.`;
+            const result = await callAI([
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: `Encabezados: ${JSON.stringify(headers)}` }
+            ]);
+            const merged = { ...heuristic, ...result };
+            addLog(`🤖 Mapeo IA (${Object.keys(merged).length}/6): ${JSON.stringify(merged)}`, 'ai');
+            columnMappingCache.set(cacheKey, merged); return merged;
+        } catch (e) {
+            addLog('⚠️ IA falló para mapeo, usando heurístico', 'warn');
+            columnMappingCache.set(cacheKey, heuristic); return heuristic;
+        }
+    }
+
+    // ─── TELÉFONOS ────────────────────────────────────────────────────────────
+    function extractBestPhone(phoneStrings) {
+        const normalizePhone = $('normalizePhoneToggle').checked;
+        const country = $('defaultCountry').value;
+        const candidates = [];
+        for (const raw of phoneStrings) {
+            let cleaned = String(raw || '').replace(/[^\d+]/g, '');
+            if (!cleaned || cleaned.length < 6) continue;
+            if (normalizePhone) {
+                try {
+                    const p = libphonenumber.parsePhoneNumber(cleaned, country === 'ZZ' ? undefined : country);
+                    if (p?.isValid()) {
+                        const type = p.getType();
+                        candidates.push({ number: p.format('E.164'), isMobile: type === 'MOBILE' || type === 'FIXED_LINE_OR_MOBILE', valid: true, len: cleaned.length });
+                        continue;
+                    }
+                } catch(e) {}
+            }
+            if (cleaned.length >= 8) candidates.push({ number: cleaned, isMobile: false, valid: false, len: cleaned.length });
+        }
+        if (!candidates.length) return '';
+        candidates.sort((a, b) => (b.valid - a.valid) || (b.isMobile - a.isMobile) || (b.len - a.len));
+        const best = candidates[0];
+        return best.valid ? best.number : '?' + best.number;
+    }
+
+    // ─── LIMPIEZA DE CONTACTO ─────────────────────────────────────────────────
+    function cleanContact(raw, mapping) {
+        const getVal = (f) => mapping[f] ? String(raw[mapping[f]] ?? '').trim() : '';
+        let firstName = getVal('firstName');
+        let lastName = getVal('lastName');
+        if (!firstName && !lastName) {
+            const full = raw['full_name'] || raw['display_name'] || raw['fn'] || raw['file_as'] || raw['name'] || '';
+            if (full) {
+                const parts = String(full).trim().split(',');
+                if (parts.length === 2) { lastName = parts[0].trim(); firstName = parts[1].trim(); }
+                else {
+                    const ws = String(full).trim().split(/\s+/);
+                    if (ws.length === 1) firstName = ws[0];
+                    else { firstName = ws.slice(0, -1).join(' '); lastName = ws[ws.length - 1]; }
+                }
+            }
+        }
+        // Capitalizar
+        firstName = capitalize(firstName);
+        lastName = capitalize(lastName);
+
+        const empresa = capitalize(getVal('company'));
+        const cargo = getVal('title');
+
+        // Email
+        const emailCandidates = [];
+        if (mapping.email) emailCandidates.push(...String(raw[mapping.email] || '').split(/[;,:::]/));
+        if (raw.email_values) emailCandidates.push(...raw.email_values);
+        const email = emailCandidates.map(e => String(e).trim().toLowerCase()).find(e => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) || '';
+
+        // Teléfono
+        const phoneCandidates = [];
+        if (mapping.phone) phoneCandidates.push(...String(raw[mapping.phone] || '').split(/[;,:::]/));
+        if (raw.phone_values) phoneCandidates.push(...raw.phone_values);
+        const whatsapp = extractBestPhone(phoneCandidates);
+
+        return { nombre: firstName, apellido: lastName, empresa, cargo, whatsapp, email };
+    }
+
+    function capitalize(str) {
+        if (!str) return '';
+        return str.toLowerCase().replace(/(?:^|\s)\S/g, c => c.toUpperCase());
+    }
+
+    // ─── DEDUPLICACIÓN ────────────────────────────────────────────────────────
+    function deduplicateContacts(contacts) {
+        if (!$('dedupToggle').checked) return contacts;
+        const seen = new Map();
+        const result = [];
+        let dupsCount = 0;
+        for (const c of contacts) {
+            // Clave compuesta: teléfono limpio + email normalizado
+            const phoneKey = c.whatsapp.replace(/[^\d]/g, '');
+            const emailKey = c.email.toLowerCase();
+            const nameKey = `${c.nombre}|${c.apellido}`.toLowerCase().trim();
+            const key = phoneKey || emailKey || nameKey;
+            if (!key) { result.push(c); continue; }
+            if (seen.has(key)) { dupsCount++; continue; }
+            seen.set(key, true);
+            result.push(c);
+        }
+        statsRemoved = dupsCount;
+        return result;
+    }
+
+    // ─── PARSEO DE ARCHIVOS ───────────────────────────────────────────────────
+    function parseCSV(file) {
+        return new Promise(resolve => {
+            Papa.parse(file, {
+                header: true, skipEmptyLines: true,
+                complete: r => resolve(r.data.map(normalizeRowKeys)),
+                error: () => resolve([])
+            });
+        });
+    }
+
+    function parseExcelAllSheets(file) {
+        return new Promise(resolve => {
+            const reader = new FileReader();
+            reader.onload = e => {
+                try {
+                    const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+                    const rows = [];
+                    wb.SheetNames.forEach(name => {
+                        const sheet = wb.Sheets[name];
+                        const raw = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+                        if (raw.length < 2) return;
+                        const headers = raw[0].map(h => String(h || '').trim());
+                        for (let i = 1; i < raw.length; i++) {
+                            const obj = {};
+                            headers.forEach((h, j) => { if (h) obj[h] = raw[i][j] !== undefined ? String(raw[i][j] ?? '') : ''; });
+                            rows.push(normalizeRowKeys(obj));
+                        }
+                    });
+                    resolve(rows);
+                } catch(err) { resolve([]); }
+            };
+            reader.onerror = () => resolve([]);
+            reader.readAsArrayBuffer(file);
+        });
+    }
+
+    function parseVCF(file) {
+        return new Promise(resolve => {
+            const reader = new FileReader();
+            reader.onload = e => {
+                const text = e.target.result;
+                const contacts = [];
+                const vcards = text.split(/END:VCARD/i).filter(p => p.includes('BEGIN:VCARD'));
+                vcards.forEach(vcard => {
+                    const obj = {};
+                    let fn = '';
+                    vcard.split(/\r?\n/).forEach(line => {
+                        line = line.trim();
+                        const [prop, ...rest] = line.split(':');
+                        const val = rest.join(':');
+                        const propUpper = prop.toUpperCase().split(';')[0];
+                        if (propUpper === 'FN') fn = val;
+                        else if (propUpper === 'N') {
+                            const parts = val.split(';');
+                            obj.last_name = parts[0] || ''; obj.first_name = parts[1] || '';
+                        } else if (propUpper === 'ORG') obj.organization_name = val;
+                        else if (propUpper === 'TITLE') obj.organization_title = val;
+                        else if (propUpper === 'TEL') { if (!obj.phone_values) obj.phone_values = []; obj.phone_values.push(val); }
+                        else if (propUpper === 'EMAIL') { if (!obj.email_values) obj.email_values = []; obj.email_values.push(val); }
+                    });
+                    if (!obj.first_name && fn) {
+                        const parts = fn.trim().split(/\s+/);
+                        obj.first_name = parts.slice(0, -1).join(' ') || fn;
+                        obj.last_name = parts.length > 1 ? parts[parts.length - 1] : '';
+                    }
+                    contacts.push(obj);
+                });
+                resolve(contacts);
+            };
+            reader.onerror = () => resolve([]);
+            reader.readAsText(file, 'UTF-8');
+        });
+    }
+
+    function normalizeRowKeys(row) {
+        const out = {};
+        Object.entries(row).forEach(([k, v]) => { out[String(k).trim().toLowerCase().replace(/\s+/g, '_')] = v; });
+        return out;
+    }
+
+    async function parseFileSmart(file) {
+        const ext = file.name.split('.').pop().toLowerCase();
+        if (ext === 'csv' || ext === 'txt') return parseCSV(file);
+        if (ext === 'xlsx' || ext === 'xls') return parseExcelAllSheets(file);
+        if (ext === 'vcf' || ext === 'vcard') return parseVCF(file);
+        return [];
+    }
+
+    // ─── PROCESAMIENTO PRINCIPAL ──────────────────────────────────────────────
+    async function processFiles() {
+        cleanedContacts = [];
+        statsRemoved = 0;
+        statsEmpty = 0;
+        const total = allFiles.length;
+        const skipEmpty = $('skipEmptyToggle').checked;
+        const BATCH = 250;
+        let rawBatch = [];
+        let filesDone = 0;
+        let mappingCache_local = new Map();
+
+        for (const item of allFiles) {
+            if (cancelRequested) throw new Error('Procesamiento cancelado por el usuario.');
+            while (isPaused) await sleep(300);
+
+            addLog(`📄 ${item.relativePath}`);
+            const rawContacts = await parseFileSmart(item.file);
+            if (!rawContacts.length) { addLog(`   └─ Sin datos.`, 'warn'); filesDone++; updateProgress(filesDone, total, rawContacts.length); continue; }
+
+            const headers = Object.keys(rawContacts[0]);
+            const mapping = await getColumnMapping(headers);
+
+            for (const raw of rawContacts) {
+                const contact = cleanContact(raw, mapping);
+                if (skipEmpty && !contact.whatsapp && !contact.email) { statsEmpty++; continue; }
+                rawBatch.push(contact);
+                if (rawBatch.length >= BATCH) {
+                    cleanedContacts.push(...rawBatch); rawBatch = [];
+                    applyFiltersAndRender(); await sleep(0);
+                }
+            }
+            addLog(`   └─ ${rawContacts.length} registros`);
+            filesDone++;
+            updateProgress(filesDone, total, rawContacts.length);
+            await sleep(0);
+        }
+
+        if (rawBatch.length) cleanedContacts.push(...rawBatch);
+
+        // Deduplicar al final
+        const before = cleanedContacts.length;
+        cleanedContacts = deduplicateContacts(cleanedContacts);
+        statsRemoved = before - cleanedContacts.length;
+
+        applyFiltersAndRender();
+    }
+
+    function updateProgress(done, total, lastCount) {
+        const pct = Math.round((done / total) * 100);
+        progressBar.style.width = `${pct}%`;
+        if (pct === 100) progressBar.classList.add('done');
+        progressPercent.textContent = `${pct}%`;
+        progressText.textContent = `Procesando archivos (${done}/${total})`;
+        progressDetail.textContent = `Contactos acumulados: ${cleanedContacts.length}`;
+    }
+
+    function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+    // ─── TABLA ────────────────────────────────────────────────────────────────
+    function applyFiltersAndRender() {
+        const query = searchInput.value.toLowerCase();
+        const filter = filterSelect.value;
+        filteredContacts = cleanedContacts.filter(c => {
+            if (query) {
+                const haystack = `${c.nombre} ${c.apellido} ${c.empresa} ${c.cargo} ${c.whatsapp} ${c.email}`.toLowerCase();
+                if (!haystack.includes(query)) return false;
+            }
+            if (filter === 'withPhone') return !!c.whatsapp;
+            if (filter === 'withEmail') return !!c.email;
+            if (filter === 'withBoth') return !!c.whatsapp && !!c.email;
+            if (filter === 'incomplete') return !c.whatsapp || !c.email;
+            return true;
+        });
+
+        if (sortState.col) {
+            filteredContacts.sort((a, b) => {
+                const av = a[sortState.col] || '';
+                const bv = b[sortState.col] || '';
+                return sortState.dir * av.localeCompare(bv, 'es');
+            });
+        }
+
+        renderTable();
+        updateStats();
+    }
+
+    function renderTable() {
+        $('tableCount').textContent = filteredContacts.length;
+        recordCount.textContent = `Mostrando ${Math.min(filteredContacts.length, 1000)} de ${filteredContacts.length}`;
+        resultsPanel.style.display = filteredContacts.length > 0 || cleanedContacts.length > 0 ? '' : 'none';
+        exportPanel.style.display = cleanedContacts.length > 0 ? '' : 'none';
+
+        if (!filteredContacts.length) {
+            tableBody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--muted);">No hay resultados para el filtro actual.</td></tr>`;
+            return;
+        }
+
+        const display = filteredContacts.slice(0, 1000);
+        const rows = display.map(c => {
+            const statusClass = (!c.whatsapp && !c.email) ? 'badge-red' : (!c.whatsapp || !c.email) ? 'badge-yellow' : 'badge-green';
+            const statusText = (!c.whatsapp && !c.email) ? 'Sin datos' : (!c.whatsapp || !c.email) ? 'Parcial' : 'Completo';
+            return `<tr>
+                <td title="${escHtml(c.nombre)}">${escHtml(c.nombre)}</td>
+                <td title="${escHtml(c.apellido)}">${escHtml(c.apellido)}</td>
+                <td title="${escHtml(c.empresa)}">${escHtml(c.empresa)}</td>
+                <td title="${escHtml(c.cargo)}">${escHtml(c.cargo)}</td>
+                <td class="phone" title="${escHtml(c.whatsapp)}">${escHtml(c.whatsapp)}</td>
+                <td title="${escHtml(c.email)}">${escHtml(c.email)}</td>
+                <td><span class="badge ${statusClass}">${statusText}</span></td>
+            </tr>`;
+        }).join('');
+        tableBody.innerHTML = rows + (filteredContacts.length > 1000 ? `<tr><td colspan="7" style="text-align:center;padding:10px;color:var(--muted);">... y ${filteredContacts.length - 1000} más. Exportá para ver todos.</td></tr>` : '');
+    }
+
+    function updateStats() {
+        $('statsDisplay').style.display = cleanedContacts.length > 0 ? 'flex' : 'none';
+        $('statTotal').textContent = cleanedContacts.length;
+        $('statDups').textContent = statsRemoved;
+        $('statEmpty').textContent = statsEmpty;
+    }
+
+    function escHtml(t) {
+        const d = document.createElement('div'); d.textContent = String(t ?? ''); return d.innerHTML;
+    }
+
+    // ─── SORT ─────────────────────────────────────────────────────────────────
+    document.querySelectorAll('th.sortable').forEach(th => {
+        th.addEventListener('click', () => {
+            const col = th.dataset.col;
+            if (sortState.col === col) sortState.dir *= -1;
+            else { sortState.col = col; sortState.dir = 1; }
+            document.querySelectorAll('th.sortable').forEach(t => t.classList.remove('sorted'));
+            th.classList.add('sorted');
+            th.querySelector('.sort-arrow').textContent = sortState.dir === 1 ? '↑' : '↓';
+            applyFiltersAndRender();
+        });
+    });
+
+    // ─── EXPORTAR ─────────────────────────────────────────────────────────────
+    function getExportData() { return filteredContacts.length ? filteredContacts : cleanedContacts; }
+
+    exportCsvBtn.addEventListener('click', () => {
+        const data = getExportData();
+        if (!data.length) return;
+        const headers = ['Nombre','Apellido','Empresa','Cargo','WhatsApp','Email'];
+        const rows = data.map(c => [c.nombre,c.apellido,c.empresa,c.cargo,c.whatsapp,c.email]);
+        const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+        downloadFile('\uFEFF' + csv, `contactos_${datestamp()}.csv`, 'text/csv;charset=utf-8;');
+        toast(`✅ CSV exportado (${data.length} contactos)`, 'success');
+        addLog(`📤 CSV exportado: ${data.length} contactos`, 'ok');
+    });
+
+    exportJsonBtn.addEventListener('click', () => {
+        const data = getExportData();
+        if (!data.length) return;
+        downloadFile(JSON.stringify(data, null, 2), `contactos_${datestamp()}.json`, 'application/json');
+        toast(`✅ JSON exportado (${data.length} contactos)`, 'success');
+    });
+
+    exportVcfBtn.addEventListener('click', () => {
+        const data = getExportData();
+        if (!data.length) return;
+        const vcf = data.map(c => {
+            const lines = ['BEGIN:VCARD','VERSION:3.0',`N:${c.apellido};${c.nombre};;;`,`FN:${c.nombre} ${c.apellido}`.trim()];
+            if (c.empresa) lines.push(`ORG:${c.empresa}`);
+            if (c.cargo) lines.push(`TITLE:${c.cargo}`);
+            if (c.whatsapp) lines.push(`TEL;TYPE=CELL:${c.whatsapp}`);
+            if (c.email) lines.push(`EMAIL:${c.email}`);
+            lines.push('END:VCARD');
+            return lines.join('\r\n');
+        }).join('\r\n');
+        downloadFile(vcf, `contactos_${datestamp()}.vcf`, 'text/vcard;charset=utf-8;');
+        toast(`✅ VCF exportado (${data.length} contactos)`, 'success');
+    });
+
+    function downloadFile(content, filename, mimeType) {
+        const blob = new Blob([content], { type: mimeType });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = filename;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    }
+
+    function datestamp() { return new Date().toISOString().slice(0,10); }
+
+    // ─── EVENTOS ──────────────────────────────────────────────────────────────
+    dropzone.addEventListener('click', () => folderInput.click());
+    dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragover'); });
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+    dropzone.addEventListener('drop', e => {
+        e.preventDefault(); dropzone.classList.remove('dragover');
+        const items = e.dataTransfer.items;
+        if (items) {
+            // Soporte drag & drop de carpetas via DataTransferItem
+            const files = [];
+            for (const item of items) {
+                if (item.kind === 'file') files.push(item.getAsFile());
+            }
+            handleFiles(files);
+        }
+    });
+
+    folderInput.addEventListener('change', e => handleFiles(Array.from(e.target.files)));
+
+    function handleFiles(files) {
+        const supported = files.filter(f => /\.(csv|txt|xlsx|xls|vcf|vcard)$/i.test(f.name));
+        allFiles = supported.map(f => ({ file: f, relativePath: f.webkitRelativePath || f.name }));
+        if (!allFiles.length) { toast('No se encontraron archivos compatibles.', 'error'); return; }
+        const byExt = {};
+        allFiles.forEach(f => { const ext = f.file.name.split('.').pop().toLowerCase(); byExt[ext] = (byExt[ext]||0)+1; });
+        fileSummary.innerHTML = `<div class="file-chip">📁 Total <span class="count">${allFiles.length}</span></div>` +
+            Object.entries(byExt).map(([e,c]) => `<div class="file-chip">.${e} <span class="count">${c}</span></div>`).join('');
+        processBtn.disabled = false;
+        addLog(`✅ ${allFiles.length} archivos cargados (${Object.entries(byExt).map(([e,c])=>`${c} ${e}`).join(', ')})`, 'ok');
+    }
+
+    processBtn.addEventListener('click', async () => {
+        if (!allFiles.length) return;
+        isProcessing = true; isPaused = false; cancelRequested = false;
+        processBtn.disabled = true; pauseBtn.disabled = false;
+        clearBtn.disabled = true;
+        progressContainer.style.display = 'block';
+        progressBar.style.width = '0%'; progressBar.classList.remove('done');
+        progressPercent.textContent = '0%';
+        columnMappingCache.clear();
+        try {
+            await processFiles();
+            addLog(`🎉 Completado. ${cleanedContacts.length} contactos | ${statsRemoved} duplicados removidos | ${statsEmpty} omitidos por vacíos`, 'ok');
+            toast(`✅ ${cleanedContacts.length} contactos procesados`, 'success');
+        } catch (err) {
+            addLog(`❌ ${err.message}`, 'err');
+            toast(err.message, 'error');
+        } finally {
+            isProcessing = false;
+            processBtn.disabled = false; pauseBtn.disabled = true;
+            clearBtn.disabled = false; cancelBtn.disabled = true;
+            progressContainer.style.display = 'none';
+        }
+    });
+
+    pauseBtn.addEventListener('click', () => {
+        isPaused = !isPaused;
+        pauseBtn.textContent = isPaused ? '▶ Reanudar' : '⏸ Pausar';
+        addLog(isPaused ? '⏸ Pausado.' : '▶ Reanudado.', 'warn');
+    });
+
+    cancelBtn.addEventListener('click', () => { if (isProcessing) { cancelRequested = true; isPaused = false; } });
+
+    clearBtn.addEventListener('click', () => {
+        allFiles = []; cleanedContacts = []; filteredContacts = [];
+        statsRemoved = 0; statsEmpty = 0;
+        fileSummary.innerHTML = '';
+        processBtn.disabled = true;
+        resultsPanel.style.display = 'none';
+        exportPanel.style.display = 'none';
+        $('statsDisplay').style.display = 'none';
+        columnMappingCache.clear();
+        tableBody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--muted);">No hay contactos procesados aún.</td></tr>';
+        addLog('🧹 Limpiado.', 'warn');
+        toast('Todo limpiado', '');
+    });
+
+    searchInput.addEventListener('input', applyFiltersAndRender);
+    filterSelect.addEventListener('change', applyFiltersAndRender);
+
+    // ─── INIT ─────────────────────────────────────────────────────────────────
+    loadApiKeys();
+    renderApiPanel();
+    addLog('🟢 ContactUnifier AI Pro v2 listo.', 'ok');
+})();
+</script>
+</body>
+</html>

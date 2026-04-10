@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ContactUnifier Pro · Multi-IA + Deduplicación Fuzzy</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#f5f7fb; color:#1e293b; font-family:'Inter',sans-serif; font-size:14px; line-height:1.5; height:100vh; overflow:hidden; }
+  .app { display:flex; flex-direction:column; height:100vh; }
+  .top-bar { background:#ffffff; border-bottom:1px solid #e2e8f0; padding:0 24px; height:60px; display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }
+  .logo h1 { font-size:18px; font-weight:700; background:linear-gradient(135deg,#7c3aed,#2563eb); -webkit-background-clip:text; background-clip:text; color:transparent; letter-spacing:-0.3px; }
+  .logo span { font-size:12px; font-weight:400; color:#64748b; margin-left:8px; }
+  .stats-row { display:flex; gap:24px; background:#ffffff; padding:8px 24px; border-bottom:1px solid #e2e8f0; font-size:13px; flex-wrap:wrap; }
+  .stat-badge { background:#f1f5f9; padding:4px 12px; border-radius:20px; color:#334155; }
+  .stat-badge strong { color:#0f172a; font-weight:600; margin-right:6px; }
+  .main-grid { display:flex; flex:1; overflow:hidden; }
+  .sidebar { width:300px; background:#ffffff; border-right:1px solid #e2e8f0; display:flex; flex-direction:column; overflow-y:auto; padding:20px 16px; gap:24px; }
+  .card { background:#f8fafc; border-radius:16px; padding:16px; border:1px solid #e2e8f0; }
+  .card h3 { font-size:13px; font-weight:600; text-transform:uppercase; letter-spacing:1px; color:#475569; margin-bottom:14px; }
+  .dropzone { border:2px dashed #cbd5e1; border-radius:14px; padding:24px 12px; text-align:center; cursor:pointer; transition:all 0.2s; background:#ffffff; }
+  .dropzone:hover { border-color:#3b82f6; background:#eff6ff; }
+  .dropzone-icon { font-size:28px; margin-bottom:8px; }
+  .target-fields { display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
+  .target-field { background:#e2e8f0; padding:4px 10px; border-radius:20px; font-size:11px; font-family:monospace; }
+  .content { flex:1; display:flex; flex-direction:column; overflow:hidden; background:#f8fafc; }
+  .toolbar { padding:12px 20px; display:flex; gap:12px; align-items:center; border-bottom:1px solid #e2e8f0; background:#ffffff; flex-wrap:wrap; }
+  .tab { background:transparent; border:none; padding:6px 14px; border-radius:30px; font-size:13px; font-weight:500; color:#475569; cursor:pointer; transition:0.2s; }
+  .tab.active { background:#e2e8f0; color:#0f172a; }
+  .search-box { background:#ffffff; border:1px solid #cbd5e1; border-radius:30px; padding:8px 16px; width:220px; outline:none; }
+  .table-wrapper { flex:1; overflow:auto; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th { text-align:left; padding:12px 16px; background:#f1f5f9; position:sticky; top:0; font-weight:600; border-bottom:1px solid #e2e8f0; }
+  td { padding:10px 16px; border-bottom:1px solid #e2e8f0; }
+  tr:hover td { background:#f1f5f9; }
+  .empty-state { display:flex; flex-direction:column; align-items:center; justify-content:center; height:300px; color:#94a3b8; gap:12px; }
+  .ai-footer { background:#ffffff; border-top:1px solid #e2e8f0; padding:12px 20px; display:flex; align-items:center; gap:16px; flex-shrink:0; font-size:12px; flex-wrap:wrap; }
+  .ai-badge { background:#e6f0ff; padding:4px 12px; border-radius:30px; color:#1e40af; font-family:monospace; }
+  .ai-status { flex:1; color:#475569; }
+  .progress { width:180px; height:4px; background:#e2e8f0; border-radius:4px; overflow:hidden; }
+  .progress-fill { height:100%; width:0%; background:#3b82f6; transition:width 0.2s; }
+  .log { font-family:'JetBrains Mono',monospace; font-size:11px; color:#64748b; max-height:60px; overflow-y:auto; background:#f1f5f9; padding:6px 12px; border-radius:12px; flex:1; }
+  button { background:#f1f5f9; border:none; padding:8px 16px; border-radius:30px; font-weight:500; cursor:pointer; transition:0.2s; }
+  button.primary { background:#3b82f6; color:white; }
+  button.primary:hover { background:#2563eb; }
+  button:disabled { opacity:0.5; cursor:not-allowed; }
+  select, input { background:#ffffff; border:1px solid #cbd5e1; border-radius:30px; padding:8px 16px; font-size:13px; outline:none; }
+  .modal { position:fixed; inset:0; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:1000; }
+  .modal-card { background:#ffffff; border-radius:24px; padding:28px; width:600px; max-width:90%; max-height:80vh; overflow:auto; }
+  .key-group { margin-bottom:16px; }
+  .key-group label { display:block; font-weight:500; margin-bottom:5px; }
+  .key-group input { width:100%; border-radius:12px; }
+  .dup-panel { background:#f8fafc; border-radius:16px; margin-bottom:16px; border:1px solid #e2e8f0; }
+  .dup-group { border-bottom:1px solid #e2e8f0; padding:12px; }
+  .dup-group:last-child { border-bottom:none; }
+  .dup-score { font-family:monospace; font-size:12px; background:#e2e8f0; padding:2px 8px; border-radius:20px; display:inline-block; }
+  .winner-row { background:#dcfce7 !important; }
+  .btn-accept { background:#22c55e; color:white; margin-left:8px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="top-bar">
+    <div class="logo"><h1>ContactUnifier Pro <span>multi-IA · fuzzy · revisión</span></h1></div>
+    <div style="display:flex; gap:12px;">
+      <button id="btnReviewDup" disabled style="background:#8b5cf6; color:white;">🔍 Revisar duplicados</button>
+      <button id="btnCsv" disabled>📄 CSV</button>
+      <button id="BtnSupabase" disabled>☁️ Supabase</button>
+    </div>
+  </div>
+  <div class="stats-row" id="statsBar">
+    <div class="stat-badge"><strong>0</strong> únicos</div>
+    <div class="stat-badge"><strong>0</strong> con email</div>
+    <div class="stat-badge"><strong>0</strong> con teléfono</div>
+    <div class="stat-badge"><strong>0</strong> duplicados</div>
+    <div class="stat-badge"><strong>0</strong> grupos dup</div>
+  </div>
+  <div class="main-grid">
+    <div class="sidebar">
+      <div class="card">
+        <h3>📂 Importar</h3>
+        <div class="dropzone" id="dropzone">📎 Arrastra o haz clic<br><small>CSV, XLSX, TXT, VCF</small></div>
+        <input type="file" id="fileInput" multiple accept=".csv,.xlsx,.xls,.txt,.vcf" style="display:none;">
+      </div>
+      <div class="card">
+        <h3>🤖 Selección de IA</h3>
+        <select id="iaMode" style="width:100%; border-radius:30px;">
+          <option value="auto">⚙️ Automático (consenso multi-IA)</option>
+          <option value="groq">🟢 Groq (Llama 3.3)</option>
+          <option value="gemini">🔵 Gemini 1.5 Flash</option>
+          <option value="deepseek">🟣 DeepSeek</option>
+          <option value="manual">✋ Mapeo manual (sin IA)</option>
+        </select>
+      </div>
+      <div class="card">
+        <h3>🔑 Claves API</h3>
+        <button id="configKeysBtn" style="width:100%">⚙️ Configurar claves</button>
+        <p style="font-size:11px; margin-top:8px;">Groq (gratis) muy recomendado</p>
+      </div>
+      <div class="card">
+        <h3>🎯 Campos finales</h3>
+        <div class="target-fields"><span class="target-field">nombre</span><span class="target-field">apellido</span><span class="target-field">teléfono</span><span class="target-field">email</span><span class="target-field">cargo</span><span class="target-field">empresa</span></div>
+      </div>
+    </div>
+    <div class="content">
+      <div class="toolbar">
+        <button class="tab active" data-tab="todos">Todos</button>
+        <button class="tab" data-tab="email">Con email</button>
+        <button class="tab" data-tab="tel">Con teléfono</button>
+        <input type="text" class="search-box" id="searchInput" placeholder="Buscar...">
+      </div>
+      <div class="table-wrapper">
+        <div id="emptyState" class="empty-state">📭 Subí archivos para empezar</div>
+        <table id="mainTable" style="display:none;"><thead><tr><th>#</th><th>Nombre</th><th>Apellido</th><th>Teléfono</th><th>Email</th><th>Cargo</th><th>Empresa</th><th>Fuente</th><th>Fecha</th></tr></thead><tbody id="tableBody"></tbody></table>
+      </div>
+    </div>
+  </div>
+  <div class="ai-footer">
+    <div class="ai-badge">◈ Multi-IA + Fuzzy</div>
+    <div class="ai-status" id="aiStatus">Listo</div>
+    <div class="progress"><div class="progress-fill" id="progressFill"></div></div>
+    <div class="log" id="logPanel">⚡ Motor de deduplicación fuzzy activado</div>
+  </div>
+</div>
+
+<!-- Modal claves -->
+<div id="keysModal" class="modal" style="display:none;">
+  <div class="modal-card">
+    <h2>🔐 Claves API</h2>
+    <div class="key-group"><label>Groq (gsk_...)</label><input type="password" id="groqKey" placeholder="gsk_"></div>
+    <div class="key-group"><label>Gemini (AIza...)</label><input type="password" id="geminiKey" placeholder="AIza"></div>
+    <div class="key-group"><label>DeepSeek (sk-...)</label><input type="password" id="deepseekKey" placeholder="sk-"></div>
+    <div style="display:flex; gap:12px; justify-content:flex-end; margin-top:12px;">
+      <button id="saveKeysBtn" class="primary">Guardar</button>
+      <button id="closeKeysBtn">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal revisión duplicados -->
+<div id="reviewModal" class="modal" style="display:none;">
+  <div class="modal-card" style="width:700px;">
+    <h2>🔍 Revisar grupos de duplicados</h2>
+    <div id="reviewGroupsList" style="max-height:60vh; overflow:auto;"></div>
+    <div style="margin-top:16px; display:flex; gap:12px; justify-content:flex-end;">
+      <button id="acceptAllDupBtn" class="primary">✅ Aceptar todos los ganadores</button>
+      <button id="closeReviewBtn">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ---------- ESTADO ----------
+  let rawContacts = [];      // contactos sin unificar
+  let unifiedContacts = [];  // después de unificar
+  let currentView = [];
+  let sources = [];
+  let duplicatesRemoved = 0;
+  let currentTab = 'todos';
+  let dupGroups = [];        // { groupId, contacts, winnerIndex, score, accepted }
+  
+  // Claves
+  let keys = {
+    groq: localStorage.getItem('groq_api_key') || '',
+    gemini: localStorage.getItem('gemini_api_key') || '',
+    deepseek: localStorage.getItem('deepseek_api_key') || ''
+  };
+
+  // DOM
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('fileInput');
+  const emptyState = document.getElementById('emptyState');
+  const mainTable = document.getElementById('mainTable');
+  const tableBody = document.getElementById('tableBody');
+  const searchInput = document.getElementById('searchInput');
+  const aiStatus = document.getElementById('aiStatus');
+  const progressFill = document.getElementById('progressFill');
+  const logPanel = document.getElementById('logPanel');
+  const btnCsv = document.getElementById('btnCsv');
+  const btnSupabase = document.getElementById('BtnSupabase');
+  const btnReviewDup = document.getElementById('btnReviewDup');
+  const statsDiv = document.getElementById('statsBar');
+  const iaModeSelect = document.getElementById('iaMode');
+
+  // Helpers
+  function log(msg, type='info') {
+    const prefix = type==='ok'?'✅':type==='err'?'❌':'ℹ️';
+    logPanel.innerHTML = `${prefix} ${msg}<br>${logPanel.innerHTML}`.slice(0, 1000);
+  }
+  function setStatus(msg, loading=false) {
+    aiStatus.innerText = msg;
+    aiStatus.style.opacity = loading ? '0.7' : '1';
+  }
+  function setProgress(pct) { progressFill.style.width = pct+'%'; }
+
+  // Normalización de texto (quitar acentos, mayúsculas)
+  function normalize(str) {
+    if (!str) return '';
+    return str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\w\s]/g, '');
+  }
+
+  // Algoritmo Jaro-Winkler
+  function jaroWinkler(s1, s2) {
+    if (!s1 || !s2) return 0;
+    s1 = s1.toLowerCase(), s2 = s2.toLowerCase();
+    let len1 = s1.length, len2 = s2.length;
+    if (len1 === 0 && len2 === 0) return 1;
+    let matchWindow = Math.floor(Math.max(len1, len2) / 2) - 1;
+    if (matchWindow < 0) matchWindow = 0;
+    let matches1 = new Array(len1).fill(false);
+    let matches2 = new Array(len2).fill(false);
+    let matches = 0;
+    for (let i = 0; i < len1; i++) {
+      let start = Math.max(0, i - matchWindow);
+      let end = Math.min(i + matchWindow + 1, len2);
+      for (let j = start; j < end; j++) {
+        if (!matches2[j] && s1[i] === s2[j]) {
+          matches1[i] = matches2[j] = true;
+          matches++;
+          break;
+        }
+      }
+    }
+    if (matches === 0) return 0;
+    let transpositions = 0, k = 0;
+    for (let i = 0; i < len1; i++) {
+      if (matches1[i]) {
+        while (!matches2[k]) k++;
+        if (s1[i] !== s2[k]) transpositions++;
+        k++;
+      }
+    }
+    let jaro = (matches / len1 + matches / len2 + (matches - transpositions/2) / matches) / 3;
+    let p = 0.1;
+    let l = 0;
+    while (l < Math.min(len1, len2) && s1[l] === s2[l]) l++;
+    return jaro + l * p * (1 - jaro);
+  }
+
+  // Pre-clustering fuzzy
+  async function findDuplicateGroups(contacts) {
+    log("Buscando grupos de duplicados (fuzzy + exacto)...", 'info');
+    setProgress(10);
+    const groups = [];
+    const used = new Set();
+    for (let i = 0; i < contacts.length; i++) {
+      if (used.has(i)) continue;
+      const c = contacts[i];
+      const group = [c];
+      used.add(i);
+      for (let j = i+1; j < contacts.length; j++) {
+        if (used.has(j)) continue;
+        const d = contacts[j];
+        // Coincidencia exacta de email o teléfono
+        let exactMatch = false;
+        if (c.email && d.email && normalize(c.email) === normalize(d.email)) exactMatch = true;
+        if (!exactMatch && c.telefono && d.telefono && normalize(c.telefono) === normalize(d.telefono)) exactMatch = true;
+        if (exactMatch) { group.push(d); used.add(j); continue; }
+        // Coincidencia fuzzy de nombre+empresa
+        let nameSim = 0;
+        if (c.nombre && d.nombre) nameSim = jaroWinkler(c.nombre, d.nombre);
+        let companySim = 0;
+        if (c.empresa && d.empresa) companySim = jaroWinkler(c.empresa, d.empresa);
+        if (nameSim > 0.9 && (companySim > 0.7 || (!c.empresa && !d.empresa))) {
+          group.push(d); used.add(j); continue;
+        }
+        // Nombre completo vs nombre+apellido
+        let full1 = (c.nombre + ' ' + (c.apellido||'')).trim();
+        let full2 = (d.nombre + ' ' + (d.apellido||'')).trim();
+        if (full1 && full2 && jaroWinkler(full1, full2) > 0.92) {
+          group.push(d); used.add(j);
+        }
+      }
+      if (group.length > 1) {
+        // Calcular score de confianza basado en coincidencias
+        let score = 0;
+        for (let g of group) {
+          if (c.email && g.email && normalize(c.email) === normalize(g.email)) score += 40;
+          if (c.telefono && g.telefono && normalize(c.telefono) === normalize(g.telefono)) score += 30;
+          if (c.nombre && g.nombre) score += Math.min(20, jaroWinkler(c.nombre, g.nombre)*20);
+        }
+        score = Math.min(100, Math.round(score / group.length));
+        // Elegir ganador (más completo)
+        let winnerIdx = 0;
+        let maxScore = 0;
+        for (let idx=0; idx<group.length; idx++) {
+          let s = (group[idx].nombre?2:0)+(group[idx].apellido?1:0)+(group[idx].email?3:0)+(group[idx].telefono?2:0)+(group[idx].cargo?1:0)+(group[idx].empresa?1:0);
+          if (s > maxScore) { maxScore = s; winnerIdx = idx; }
+        }
+        groups.push({ groupId: `dup_${groups.length}`, contacts: group, winnerIndex: winnerIdx, score, accepted: false });
+      }
+    }
+    setProgress(50);
+    log(`Encontrados ${groups.length} grupos de duplicados`, groups.length ? 'warn' : 'ok');
+    return groups;
+  }
+
+  // Aplicar fusión de un grupo (aceptar ganador)
+  function acceptGroup(group, contactsList) {
+    const winner = group.contacts[group.winnerIndex];
+    for (let other of group.contacts) {
+      if (other === winner) continue;
+      if (!winner.nombre && other.nombre) winner.nombre = other.nombre;
+      if (!winner.apellido && other.apellido) winner.apellido = other.apellido;
+      if (!winner.email && other.email) winner.email = other.email;
+      if (!winner.telefono && other.telefono) winner.telefono = other.telefono;
+      if (!winner.cargo && other.cargo) winner.cargo = other.cargo;
+      if (!winner.empresa && other.empresa) winner.empresa = other.empresa;
+      // Eliminar los duplicados de la lista principal (marcar como no usados)
+      const idx = contactsList.findIndex(c => c === other);
+      if (idx !== -1) contactsList.splice(idx, 1);
+    }
+    // Mantener solo el ganador
+    group.accepted = true;
+  }
+
+  // Motor de unificación completo
+  async function runDeduplication() {
+    if (rawContacts.length === 0) { log('No hay contactos para deduplicar','warn'); return; }
+    setStatus('Ejecutando deduplicación fuzzy...', true);
+    const groups = await findDuplicateGroups(rawContacts);
+    dupGroups = groups;
+    if (groups.length === 0) {
+      unifiedContacts = [...rawContacts];
+      duplicatesRemoved = 0;
+      log('No se encontraron duplicados', 'ok');
+    } else {
+      // No aplicamos automáticamente, dejamos que el usuario revise en el panel
+      unifiedContacts = [...rawContacts]; // por ahora igual
+      duplicatesRemoved = groups.reduce((acc,g) => acc + g.contacts.length -1, 0);
+      log(`Se encontraron ${groups.length} grupos. Usa "Revisar duplicados" para fusionar.`, 'warn');
+      btnReviewDup.disabled = false;
+    }
+    currentView = [...unifiedContacts];
+    renderTable();
+    updateStats();
+    setStatus('Deduplicación lista. Revisa duplicados si los hay.', false);
+    setProgress(0);
+  }
+
+  // Mostrar modal de revisión
+  function showReviewModal() {
+    if (!dupGroups.length) { alert('No hay grupos de duplicados pendientes'); return; }
+    const container = document.getElementById('reviewGroupsList');
+    container.innerHTML = '';
+    for (let g of dupGroups) {
+      if (g.accepted) continue;
+      const div = document.createElement('div');
+      div.className = 'dup-group';
+      div.innerHTML = `<div style="margin-bottom:8px;"><span class="dup-score">🔍 Confianza: ${g.score}%</span>
+        <button class="btn-accept" data-id="${g.groupId}">✅ Aceptar este grupo</button></div>`;
+      const table = document.createElement('table');
+      table.style.width='100%'; table.style.fontSize='12px'; table.style.borderCollapse='collapse';
+      table.innerHTML = `<thead><tr><th>#</th><th>Nombre</th><th>Apellido</th><th>Email</th><th>Teléfono</th><th>Empresa</th></tr></thead><tbody>`;
+      g.contacts.forEach((c, idx) => {
+        const rowClass = (idx === g.winnerIndex) ? 'winner-row' : '';
+        table.innerHTML += `<tr class="${rowClass}"><td>${idx+1}</td><td>${escapeHtml(c.nombre||'—')}</td><td>${escapeHtml(c.apellido||'—')}</td><td>${escapeHtml(c.email||'—')}</td><td>${escapeHtml(c.telefono||'—')}</td><td>${escapeHtml(c.empresa||'—')}</td></tr>`;
+      });
+      table.innerHTML += '</tbody>';
+      div.appendChild(table);
+      container.appendChild(div);
+    }
+    document.getElementById('reviewModal').style.display = 'flex';
+    // Asignar eventos a los botones aceptar
+    document.querySelectorAll('.btn-accept').forEach(btn => {
+      btn.onclick = (e) => {
+        const gid = btn.getAttribute('data-id');
+        const group = dupGroups.find(g => g.groupId === gid);
+        if (group && !group.accepted) {
+          acceptGroup(group, rawContacts);
+          group.accepted = true;
+          unifiedContacts = rawContacts.filter(c => !c._deleted);
+          currentView = [...unifiedContacts];
+          renderTable();
+          updateStats();
+          showReviewModal(); // refrescar
+          log('Grupo aceptado y fusionado', 'ok');
+        }
+      };
+    });
+  }
+
+  document.getElementById('acceptAllDupBtn').onclick = () => {
+    for (let g of dupGroups) {
+      if (!g.accepted) acceptGroup(g, rawContacts);
+      g.accepted = true;
+    }
+    unifiedContacts = rawContacts.filter(c => !c._deleted);
+    currentView = [...unifiedContacts];
+    renderTable();
+    updateStats();
+    document.getElementById('reviewModal').style.display = 'none';
+    log('Todos los grupos fueron fusionados', 'ok');
+    btnReviewDup.disabled = true;
+  };
+  document.getElementById('closeReviewBtn').onclick = () => document.getElementById('reviewModal').style.display = 'none';
+
+  // Funciones de IA (similares a versión anterior pero más robustas)
+  async function callGroq(prompt, apiKey) {
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST', headers: { 'Content-Type':'application/json', 'Authorization':`Bearer ${apiKey}` },
+      body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{role:'user', content:prompt}], temperature:0.2, response_format:{type:'json_object'} })
+    });
+    if(!res.ok) throw new Error(await res.text());
+    const data = await res.json();
+    return data.choices[0].message.content;
+  }
+  async function callGemini(prompt, apiKey) {
+    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    const res = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ contents:[{ parts:[{text:prompt}] }], generationConfig:{temperature:0.2} }) });
+    if(!res.ok) throw new Error(await res.text());
+    const data = await res.json();
+    return data.candidates[0].content.parts[0].text;
+  }
+  async function callDeepSeek(prompt, apiKey) {
+    const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
+      method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${apiKey}`},
+      body: JSON.stringify({ model:'deepseek-chat', messages:[{role:'user', content:prompt}], temperature:0.2, response_format:{type:'json_object'} })
+    });
+    if(!res.ok) throw new Error(await res.text());
+    const data = await res.json();
+    return data.choices[0].message.content;
+  }
+
+  async function getMappingFromIA(provider, rows, filename) {
+    const sample = rows.slice(0,6);
+    const headers = Object.keys(sample[0]||{});
+    const prompt = `Archivo: "${filename}". Columnas: ${JSON.stringify(headers)}. Muestra: ${JSON.stringify(sample)}. Mapea a nombre, apellido, telefono, email, cargo, empresa. Detecta columna de fecha de actualización. Responde SOLO JSON: {"mapeo": {...}, "fecha_actualizacion": "col" o null}`;
+    try {
+      let text = '';
+      if (provider === 'groq' && keys.groq) text = await callGroq(prompt, keys.groq);
+      else if (provider === 'gemini' && keys.gemini) text = await callGemini(prompt, keys.gemini);
+      else if (provider === 'deepseek' && keys.deepseek) text = await callDeepSeek(prompt, keys.deepseek);
+      else throw new Error(`Clave ${provider} no configurada`);
+      text = text.replace(/```json\n?/g,'').replace(/```\n?/g,'').trim();
+      return JSON.parse(text);
+    } catch(e) { log(`Error en ${provider}: ${e.message}`, 'err'); return null; }
+  }
+
+  async function mapWithAutoConsensus(rows, filename) {
+    const available = [];
+    if (keys.groq) available.push('groq');
+    if (keys.gemini) available.push('gemini');
+    if (keys.deepseek) available.push('deepseek');
+    if (available.length === 0) { log('No hay claves API. Usa modo manual.', 'err'); return null; }
+    if (available.length === 1) {
+      const result = await getMappingFromIA(available[0], rows, filename);
+      if (!result) return null;
+      return applyMapping(rows, result.mapeo, result.fecha_actualizacion);
+    }
+    log(`Consultando ${available.length} IAs para consenso...`, 'info');
+    const results = await Promise.all(available.map(async prov => {
+      const r = await getMappingFromIA(prov, rows, filename);
+      return { provider: prov, mapping: r?.mapeo, fechaCol: r?.fecha_actualizacion };
+    }));
+    const valid = results.filter(r => r.mapping);
+    if (valid.length === 0) return null;
+    const mappingVotes = {};
+    for (const v of valid) {
+      const key = JSON.stringify(v.mapping);
+      mappingVotes[key] = (mappingVotes[key] || 0) + 1;
+    }
+    const bestMapping = Object.keys(mappingVotes).reduce((a,b) => mappingVotes[a] > mappingVotes[b] ? a : b);
+    const bestMappingObj = JSON.parse(bestMapping);
+    const fechaCols = valid.map(v => v.fechaCol).filter(f => f);
+    const fechaFinal = fechaCols.length ? fechaCols[0] : null;
+    log(`Consenso alcanzado con ${mappingVotes[bestMapping]} IAs`, 'ok');
+    return applyMapping(rows, bestMappingObj, fechaFinal);
+  }
+
+  function applyMapping(rows, mapeo, fechaCol) {
+    return rows.map(row => {
+      const out = {};
+      for (let [col, target] of Object.entries(mapeo)) {
+        if (target === 'IGNORAR') continue;
+        let val = row[col] || '';
+        if (!out[target] && val) out[target] = val;
+      }
+      if (out.nombre && !out.apellido) {
+        let parts = String(out.nombre).trim().split(/\s+/);
+        if (parts.length >= 2) { out.apellido = parts.slice(1).join(' '); out.nombre = parts[0]; }
+      }
+      let fechaRaw = null;
+      if (fechaCol && row[fechaCol]) fechaRaw = row[fechaCol];
+      out.fecha_original = fechaRaw ? new Date(fechaRaw).toISOString().slice(0,10) : null;
+      return out;
+    });
+  }
+
+  async function manualMapping(rows, filename) {
+    const sample = rows[0];
+    const headers = Object.keys(sample);
+    const mapping = {};
+    for (let h of headers) {
+      const low = h.toLowerCase();
+      if (low.includes('nombre') || low.includes('name') || low === 'nombres') mapping[h] = 'nombre';
+      else if (low.includes('apellido') || low.includes('surname') || low === 'lastname') mapping[h] = 'apellido';
+      else if (low.includes('tel') || low.includes('phone') || low.includes('movil')) mapping[h] = 'telefono';
+      else if (low.includes('email') || low.includes('correo')) mapping[h] = 'email';
+      else if (low.includes('cargo') || low.includes('puesto') || low.includes('title')) mapping[h] = 'cargo';
+      else if (low.includes('empresa') || low.includes('company') || low.includes('organizacion')) mapping[h] = 'empresa';
+      else if (low.includes('fecha') || low.includes('date') || low.includes('actualizacion')) mapping[h] = 'fecha_original';
+      else mapping[h] = 'IGNORAR';
+    }
+    log(`Mapeo manual (sin IA) aplicado a ${filename}`, 'info');
+    return rows.map(row => {
+      const out = {};
+      for (let [col, target] of Object.entries(mapping)) {
+        if (target === 'IGNORAR') continue;
+        let val = row[col] || '';
+        if (!out[target] && val) out[target] = val;
+      }
+      if (out.nombre && !out.apellido) {
+        let parts = String(out.nombre).trim().split(/\s+/);
+        if (parts.length >= 2) { out.apellido = parts.slice(1).join(' '); out.nombre = parts[0]; }
+      }
+      let fechaRaw = null;
+      if (mapping.fecha_original && row[mapping.fecha_original]) fechaRaw = row[mapping.fecha_original];
+      out.fecha_original = fechaRaw ? new Date(fechaRaw).toISOString().slice(0,10) : null;
+      return out;
+    });
+  }
+
+  // Procesar archivo
+  async function processFile(file) {
+    const ext = file.name.split('.').pop().toLowerCase();
+    log(`Procesando ${file.name}...`);
+    let rows = [];
+    try {
+      if (ext === 'csv' || ext === 'txt') rows = await parseCSV(file);
+      else if (ext === 'xlsx' || ext === 'xls') rows = await parseXLSX(file);
+      else if (ext === 'vcf') rows = parseVCF(await file.text());
+      else { log(`Formato no soportado`,'err'); return; }
+    } catch(e) { log(`Error lectura: ${e.message}`,'err'); return; }
+    if (!rows.length) { log(`Sin datos`,'warn'); return; }
+
+    const mode = iaModeSelect.value;
+    let mapped = null;
+    setProgress(20);
+    if (mode === 'auto') mapped = await mapWithAutoConsensus(rows, file.name);
+    else if (mode === 'groq') { const res = await getMappingFromIA('groq', rows, file.name); if(res) mapped = applyMapping(rows, res.mapeo, res.fecha_actualizacion); }
+    else if (mode === 'gemini') { const res = await getMappingFromIA('gemini', rows, file.name); if(res) mapped = applyMapping(rows, res.mapeo, res.fecha_actualizacion); }
+    else if (mode === 'deepseek') { const res = await getMappingFromIA('deepseek', rows, file.name); if(res) mapped = applyMapping(rows, res.mapeo, res.fecha_actualizacion); }
+    else if (mode === 'manual') mapped = await manualMapping(rows, file.name);
+    if (!mapped) { log(`Fallo en el mapeo para ${file.name}`, 'err'); return; }
+
+    const sourceId = `src_${Date.now()}_${Math.random().toString(36).slice(2,6)}`;
+    const today = new Date().toISOString().slice(0,10);
+    const newContacts = mapped.map((r, idx) => ({
+      _id: `${sourceId}_${idx}`, _sourceName: file.name,
+      nombre: clean(r.nombre), apellido: clean(r.apellido), telefono: clean(r.telefono), email: clean(r.email),
+      cargo: clean(r.cargo), empresa: clean(r.empresa), fecha_original: r.fecha_original || today, _deleted: false
+    }));
+    sources.push({ id: sourceId, name: file.name, count: newContacts.length });
+    rawContacts.push(...newContacts);
+    currentView = [...rawContacts];
+    renderTable();
+    updateStats();
+    log(`✅ ${file.name}: ${newContacts.length} contactos`, 'ok');
+    setProgress(100);
+    setTimeout(()=>setProgress(0), 500);
+    // Después de importar, ejecutar deduplicación automática (pero sin fusionar, solo detectar)
+    await runDeduplication();
+  }
+
+  // Parseadores
+  function parseCSV(file) { return new Promise((res,rej)=>Papa.parse(file,{header:true,skipEmptyLines:true,complete:r=>res(r.data),error:rej})); }
+  function parseXLSX(file) { return new Promise((res,rej)=>{const reader=new FileReader(); reader.onload=e=>{try{const wb=XLSX.read(e.target.result,{type:'array'}); const ws=wb.Sheets[wb.SheetNames[0]]; res(XLSX.utils.sheet_to_json(ws,{defval:''}));}catch(err){rej(err);}}; reader.onerror=rej; reader.readAsArrayBuffer(file);}); }
+  function parseVCF(text) { const contacts=[]; const cards=text.split(/BEGIN:VCARD/i).slice(1); for(const card of cards){ const get=key=>{const re=new RegExp(`^${key}[^:]*:(.*)`,'mi'); const m=card.match(re); return m?m[1].trim():'';}; const fn=get('FN')||get('N'); const emails=[...card.matchAll(/^EMAIL[^:]*:(.*)/gmi)].map(m=>m[1].trim()); const tels=[...card.matchAll(/^TEL[^:]*:(.*)/gmi)].map(m=>m[1].trim()); contacts.push({'Nombre completo':fn,'Email':emails[0]||'','Teléfono':tels[0]||'','Empresa':get('ORG'),'Cargo':get('TITLE')});} return contacts; }
+
+  // Renderizado de tabla (con paginación virtual para grandes volúmenes)
+  let currentPage = 0;
+  const PAGE_SIZE = 500;
+  function renderTable() {
+    const q = searchInput.value.toLowerCase();
+    let filtered = currentView.filter(c => {
+      if(currentTab === 'email') return !!c.email;
+      if(currentTab === 'tel') return !!c.telefono;
+      return true;
+    }).filter(c => (c.nombre+''+c.apellido+''+c.email+''+c.empresa+''+c.telefono).toLowerCase().includes(q));
+    if(filtered.length === 0) { mainTable.style.display='none'; emptyState.style.display='flex'; return; }
+    mainTable.style.display='table'; emptyState.style.display='none';
+    const start = currentPage * PAGE_SIZE;
+    const end = Math.min(start + PAGE_SIZE, filtered.length);
+    tableBody.innerHTML = filtered.slice(start, end).map((c,i)=>`<tr><td>${start+i+1}</td><td>${escapeHtml(c.nombre)||'—'}</td><td>${escapeHtml(c.apellido)||'—'}</td><td class="text-purple">${escapeHtml(c.telefono)||'—'}</td><td class="text-blue">${escapeHtml(c.email)||'—'}</td><td>${escapeHtml(c.cargo)||'—'}</td><td>${escapeHtml(c.empresa)||'—'}</td><td><small>${escapeHtml(c._sourceName)}</small></td><td>${c.fecha_original||'—'}</td></tr>`).join('');
+    // Agregar scroll infinito (simple)
+    const wrapper = document.querySelector('.table-wrapper');
+    wrapper.onscroll = () => {
+      if (wrapper.scrollTop + wrapper.clientHeight >= wrapper.scrollHeight - 100) {
+        if ((currentPage+1)*PAGE_SIZE < filtered.length) {
+          currentPage++;
+          renderTable();
+        }
+      }
+    };
+  }
+
+  function updateStats() {
+    const total = currentView.length;
+    const withEmail = currentView.filter(c=>c.email).length;
+    const withTel = currentView.filter(c=>c.telefono).length;
+    statsDiv.innerHTML = `<div class="stat-badge"><strong>${total}</strong> únicos</div><div class="stat-badge"><strong>${withEmail}</strong> con email</div><div class="stat-badge"><strong>${withTel}</strong> con teléfono</div><div class="stat-badge"><strong>${duplicatesRemoved}</strong> duplicados</div><div class="stat-badge"><strong>${dupGroups.length}</strong> grupos dup</div>`;
+    btnCsv.disabled = (currentView.length===0);
+    btnSupabase.disabled = (currentView.length===0);
+    btnReviewDup.disabled = (dupGroups.length===0);
+  }
+
+  // Exportaciones
+  function exportCSV() {
+    const data = currentView;
+    const headers = ['nombre','apellido','telefono','email','cargo','empresa','fuente_original','fecha_original'];
+    const rows = data.map(c => headers.map(h => `"${String(c[h]||c._sourceName||'').replace(/"/g,'""')}"`).join(','));
+    const csv = [headers.join(','), ...rows].join('\n');
+    const blob = new Blob(['\ufeff'+csv], {type:'text/csv'});
+    const a = document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`contactos_${new Date().toISOString().slice(0,10)}.csv`; a.click();
+    log('CSV exportado','ok');
+  }
+
+  async function exportToSupabase() {
+    const url = prompt('URL de Supabase (ej: https://proyecto.supabase.co)');
+    const key = prompt('Anon key');
+    if(!url||!key) return;
+    const rows = currentView.map(c=>({ nombre:c.nombre, apellido:c.apellido, telefono:c.telefono, email:c.email, cargo:c.cargo, empresa:c.empresa, fuente_original:c._sourceName, fecha_original:c.fecha_original }));
+    const BATCH=500; let inserted=0;
+    for(let i=0;i<rows.length;i+=BATCH){
+      const batch=rows.slice(i,i+BATCH);
+      try{
+        const r=await fetch(`${url.replace(/\/$/,'')}/rest/v1/contactos_unificados`,{
+          method:'POST', headers:{'Content-Type':'application/json','apikey':key,'Authorization':`Bearer ${key}`,'Prefer':'return=minimal'},
+          body:JSON.stringify(batch)
+        });
+        if(!r.ok){
+          const err=await r.json();
+          if(err.message?.includes('does not exist')) alert('Tabla no existe. Créala primero en Supabase.');
+          else throw new Error(err.message);
+          return;
+        }
+        inserted+=batch.length;
+      }catch(e){ alert(`Error: ${e.message}`); return; }
+    }
+    alert(`✅ ${inserted} registros subidos a Supabase`);
+    log(`Supabase: ${inserted} exportados`,'ok');
+  }
+
+  // Eventos y drag & drop
+  dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.style.borderColor='#3b82f6'; });
+  dropzone.addEventListener('dragleave', () => dropzone.style.borderColor='#cbd5e1');
+  dropzone.addEventListener('drop', e => { e.preventDefault(); dropzone.style.borderColor='#cbd5e1'; handleFiles(e.dataTransfer.files); });
+  dropzone.onclick = () => fileInput.click();
+  fileInput.onchange = e => handleFiles(e.target.files);
+  async function handleFiles(files) {
+    for (let f of files) await processFile(f);
+  }
+
+  // Modal claves
+  const keysModal = document.getElementById('keysModal');
+  document.getElementById('configKeysBtn').onclick = () => {
+    document.getElementById('groqKey').value = keys.groq;
+    document.getElementById('geminiKey').value = keys.gemini;
+    document.getElementById('deepseekKey').value = keys.deepseek;
+    keysModal.style.display = 'flex';
+  };
+  document.getElementById('saveKeysBtn').onclick = () => {
+    keys.groq = document.getElementById('groqKey').value.trim();
+    keys.gemini = document.getElementById('geminiKey').value.trim();
+    keys.deepseek = document.getElementById('deepseekKey').value.trim();
+    localStorage.setItem('groq_api_key', keys.groq);
+    localStorage.setItem('gemini_api_key', keys.gemini);
+    localStorage.setItem('deepseek_api_key', keys.deepseek);
+    keysModal.style.display = 'none';
+    log('Claves actualizadas', 'ok');
+  };
+  document.getElementById('closeKeysBtn').onclick = () => keysModal.style.display = 'none';
+
+  // Botones
+  btnCsv.onclick = exportCSV;
+  btnSupabase.onclick = exportToSupabase;
+  btnReviewDup.onclick = showReviewModal;
+  searchInput.oninput = () => { currentPage = 0; renderTable(); };
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.onclick = () => {
+      document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+      tab.classList.add('active');
+      currentTab = tab.getAttribute('data-tab');
+      currentPage = 0;
+      renderTable();
+    };
+  });
+
+  function clean(v) { return v ? String(v).trim().replace(/^[_\-,;\s]+|[_\-,;\s]+$/g,'') : ''; }
+  function escapeHtml(s) { return s ? String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') : ''; }
+</script>
+</body>
+</html>

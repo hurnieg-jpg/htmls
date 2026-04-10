@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>🤖 ContactUnifier AI Pro v3.4 - Pablo Edition</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://unpkg.com/libphonenumber-js@1.10.53/bundle/libphonenumber-min.js"></script>
+    <style>
+        body { font-family: sans-serif; margin: 20px; background: #f4f7f6; color: #333; }
+        .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .btn { padding: 10px 20px; border-radius: 5px; cursor: pointer; border: none; font-weight: bold; margin-right: 10px; }
+        .btn-primary { background: #2563eb; color: white; }
+        .btn-config { background: #059669; color: white; }
+        .log { background: #1e293b; color: #34d399; padding: 15px; border-radius: 5px; font-family: monospace; font-size: 12px; height: 150px; overflow-y: auto; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background: #f8fafc; }
+    </style>
+</head>
+<body>
+
+    <h1>🤖 ContactUnifier AI Pro v3.4</h1>
+
+    <div class="card">
+        <h3>1. Configuración</h3>
+        <button class="btn btn-config" onclick="document.getElementById('configInput').click()">📂 Cargar JSON de APIs</button>
+        <input type="file" id="configInput" accept=".json" style="display:none">
+        <span id="configStatus">Claves no cargadas</span>
+    </div>
+
+    <div class="card">
+        <h3>2. Carga de Archivos</h3>
+        <input type="file" id="csvInput" multiple accept=".csv">
+        <p style="font-size: 0.8em; color: #666;">Seleccioná tus archivos de Google Contacts.</p>
+    </div>
+
+    <button class="btn btn-primary" id="btnProcesar" disabled>⚡ PROCESAR CONTACTOS</button>
+
+    <div class="card" style="margin-top:20px;">
+        <h3>Registro de Actividad</h3>
+        <div class="log" id="logBox">Esperando archivos...</div>
+    </div>
+
+    <div class="card" id="resultCard" style="display:none">
+        <h3>Resultados</h3>
+        <button class="btn btn-primary" id="btnExportar">📥 Descargar CSV Limpio</button>
+        <div style="overflow-x:auto">
+            <table id="tablaResultados">
+                <thead>
+                    <tr><th>Nombre</th><th>Apellido</th><th>Empresa</th><th>Teléfono</th><th>Email</th></tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+<script>
+    let apiConfig = {};
+    let finalData = [];
+
+    const log = (msg) => {
+        const lb = document.getElementById('logBox');
+        lb.innerHTML += `> ${msg}<br>`;
+        lb.scrollTop = lb.scrollHeight;
+    };
+
+    // 1. CARGAR CONFIGURACIÓN JSON
+    document.getElementById('configInput').onchange = function(e) {
+        const file = e.target.files[0];
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            try {
+                apiConfig = JSON.parse(event.target.result);
+                document.getElementById('configStatus').innerText = "✅ Configuración cargada correctamente";
+                log("Configuración de APIs importada.");
+            } catch(err) {
+                log("Error al leer el JSON de configuración.");
+            }
+        };
+        reader.readAsText(file);
+    };
+
+    document.getElementById('csvInput').onchange = () => {
+        document.getElementById('btnProcesar').disabled = false;
+        log("Archivos detectados. Listos para procesar.");
+    };
+
+    // 2. LÓGICA DE PROCESAMIENTO
+    document.getElementById('btnProcesar').onclick = async () => {
+        const files = document.getElementById('csvInput').files;
+        finalData = [];
+        log(`Iniciando procesamiento de ${files.length} archivos...`);
+
+        for (let file of files) {
+            await new Promise(resolve => {
+                Papa.parse(file, {
+                    header: true,
+                    skipEmptyLines: true,
+                    complete: (results) => {
+                        const headers = results.meta.fields;
+                        
+                        // Heurística específica para Google Contacts (Prioriza "Value")
+                        const fNameCol = headers.find(h => h.toLowerCase().includes('first name'));
+                        const lNameCol = headers.find(h => h.toLowerCase().includes('last name'));
+                        const orgCol = headers.find(h => h.toLowerCase().includes('organization name'));
+                        const phoneCol = headers.find(h => h.toLowerCase().includes('phone') && h.toLowerCase().includes('value')) || headers.find(h => h.toLowerCase().includes('phone'));
+                        const emailCol = headers.find(h => h.toLowerCase().includes('e-mail') && h.toLowerCase().includes('value')) || headers.find(h => h.toLowerCase().includes('email'));
+
+                        const processed = results.data.map(row => ({
+                            nombre: row[fNameCol] || '',
+                            apellido: row[lNameCol] || '',
+                            empresa: row[orgCol] || '',
+                            telefono: (row[phoneCol] || '').replace(/[^\d+]/g, ''),
+                            email: row[emailCol] || ''
+                        })).filter(item => item.telefono || item.email);
+
+                        finalData.push(...processed);
+                        resolve();
+                    }
+                });
+            });
+        }
+
+        // Deduplicación básica
+        const unicos = Array.from(new Map(finalData.map(c => [c.telefono + c.email, c])).values());
+        mostrarResultados(unicos);
+    };
+
+    function mostrarResultados(data) {
+        log(`Proceso terminado. ${data.length} contactos únicos encontrados.`);
+        const tbody = document.querySelector('#tablaResultados tbody');
+        tbody.innerHTML = data.slice(0, 50).map(c => `
+            <tr><td>${c.nombre}</td><td>${c.apellido}</td><td>${c.empresa}</td><td>${c.telefono}</td><td>${c.email}</td></tr>
+        `).join('');
+        document.getElementById('resultCard').style.display = 'block';
+        window.dataToExport = data;
+    }
+
+    document.getElementById('btnExportar').onclick = () => {
+        const csv = Papa.unparse(window.dataToExport);
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = "Base_Limpia_Pablo.csv";
+        link.click();
+    };
+</script>
+</body>
+</html>

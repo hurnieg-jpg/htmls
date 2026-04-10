@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🤖 ContactUnifier AI Pro v3.2 – Import/Export</title>
+    <!-- Librerías -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <script src="https://unpkg.com/libphonenumber-js@1.10.53/bundle/libphonenumber-min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jaro-winkler@1.0.0/index.min.js"></script>
+    <style>
+        * { box-sizing: border-box; font-family: system-ui, sans-serif; }
+        body { margin: 20px; background: #f1f5f9; color: #1e293b; }
+        .container { max-width: 1400px; margin: 0 auto; }
+        .panel { background: white; border-radius: 14px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); border: 1px solid #e2e8f0; }
+        .panel-title { font-weight: 700; margin-bottom: 15px; display: flex; align-items: center; gap: 8px; }
+        .api-keys-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+        .provider-card { border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; background: #fafafa; }
+        .provider-header { display: flex; justify-content: space-between; margin-bottom: 10px; }
+        .key-input-group { display: flex; gap: 7px; margin-bottom: 8px; }
+        .key-input-group input { flex: 1; padding: 7px 12px; border: 1px solid #cbd5e1; border-radius: 20px; }
+        .key-list { max-height: 100px; overflow-y: auto; }
+        .key-badge { display: inline-flex; align-items: center; gap: 4px; background: #e2e8f0; padding: 3px 9px; border-radius: 20px; margin: 2px; font-size: 0.75rem; font-family: monospace; }
+        .btn { padding: 8px 16px; border-radius: 30px; font-weight: 600; cursor: pointer; border: 1px solid transparent; transition: 0.15s; background: none; }
+        .btn-primary { background: #3b82f6; color: white; }
+        .btn-outline { background: white; color: #1e293b; border-color: #cbd5e1; }
+        .btn-danger { background: #ef4444; color: white; }
+        .btn-success { background: #22c55e; color: white; }
+        .dropzone { border: 2px dashed #cbd5e1; border-radius: 14px; padding: 36px; text-align: center; cursor: pointer; margin-bottom: 16px; }
+        .dropzone.dragover { border-color: #3b82f6; background: #eff6ff; }
+        .progress-container { margin: 15px 0; }
+        .progress-track { height: 6px; background: #e2e8f0; border-radius: 10px; }
+        .progress-bar { height: 6px; background: #3b82f6; width: 0%; border-radius: 10px; }
+        .log-box { background: #0f172a; color: #94a3b8; padding: 12px; border-radius: 8px; font-family: monospace; max-height: 150px; overflow-y: auto; font-size: 0.78rem; }
+        .log-ok { color: #4ade80; } .log-err { color: #f87171; }
+        table { width: 100%; border-collapse: collapse; background: white; }
+        th { background: #f8fafc; padding: 10px; text-align: left; border-bottom: 1px solid #e2e8f0; cursor: pointer; }
+        td { padding: 8px 10px; border-bottom: 1px solid #f1f5f9; }
+        .modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; align-items: center; justify-content: center; }
+        .modal-backdrop.open { display: flex; }
+        .modal { background: white; border-radius: 14px; padding: 24px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; }
+        .toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 200; }
+        .toast { background: #1e293b; color: white; padding: 10px 18px; border-radius: 8px; margin-top: 8px; }
+        .config-actions { display: flex; gap: 8px; margin-left: auto; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>🤖 ContactUnifier AI Pro <span style="font-size:0.8rem; background:#3b82f6; color:white; padding:2px 10px; border-radius:20px;">v3.2</span></h1>
+    <div style="color:#64748b; margin-bottom:20px;">Unificación con IA · Fuzzy dedup · Revisión manual</div>
+
+    <!-- Panel APIs -->
+    <div class="panel">
+        <div class="panel-title">
+            🔑 APIs de IA <span class="pill" id="totalKeysCount">0 claves</span>
+            <div class="config-actions">
+                <button class="btn btn-outline" id="importConfigBtn" style="padding:6px 12px;">📥 Importar</button>
+                <button class="btn btn-outline" id="exportConfigBtn" style="padding:6px 12px;">📤 Exportar</button>
+                <input type="file" id="importConfigInput" accept=".json,application/json" style="display:none;">
+            </div>
+        </div>
+        <div class="api-keys-grid" id="apiKeysContainer"></div>
+        <div style="margin-top:12px; font-size:0.82rem; color:#64748b;">ℹ️ Rotación automática. Tus claves se guardan localmente.</div>
+    </div>
+
+    <!-- Carga de archivos -->
+    <div class="panel">
+        <div class="panel-title">📁 Carga de contactos</div>
+        <div id="dropzone" class="dropzone">
+            <div style="font-size:40px;">📂</div>
+            <strong>Arrastrá carpeta/archivos o usá los botones</strong>
+            <div style="margin-top:15px;">
+                <button class="btn btn-outline" id="selectFolderBtn">📁 Seleccionar carpeta</button>
+                <button class="btn btn-outline" id="selectFilesBtn">📄 Seleccionar archivos</button>
+            </div>
+            <input type="file" id="folderInput" webkitdirectory multiple style="display:none;">
+            <input type="file" id="filesInput" multiple accept=".csv,.txt,.xlsx,.xls,.vcf,.vcard" style="display:none;">
+        </div>
+        <div id="fileSummary" style="display:flex; gap:8px; flex-wrap:wrap; margin:10px 0;"></div>
+
+        <div style="display:flex; gap:15px; flex-wrap:wrap; align-items:center; padding-top:10px; border-top:1px solid #e2e8f0;">
+            <label><input type="checkbox" id="dedupToggle" checked> Eliminar duplicados</label>
+            <label><input type="checkbox" id="fuzzyToggle" checked> Fuzzy matching</label>
+            <label><input type="checkbox" id="reviewDupesToggle"> Revisar antes de fusionar</label>
+            <label><input type="checkbox" id="aiNameSplitToggle"> IA para nombres</label>
+            <label>Umbral: <input type="number" id="fuzzyThreshold" min="0.7" max="1.0" step="0.01" value="0.85" style="width:70px;"></label>
+            <label>País tel.: 
+                <select id="defaultCountry">
+                    <option value="AR">🇦🇷 Argentina</option><option value="MX">🇲🇽 México</option><option value="ES">🇪🇸 España</option>
+                    <option value="ZZ">🌐 Auto</option>
+                </select>
+            </label>
+        </div>
+    </div>
+
+    <!-- Toolbar -->
+    <div style="display:flex; gap:10px; margin-bottom:15px; flex-wrap:wrap;">
+        <button class="btn btn-primary" id="processBtn" disabled>⚡ Procesar</button>
+        <button class="btn btn-outline" id="pauseBtn" disabled>⏸ Pausar</button>
+        <button class="btn btn-outline" id="clearBtn">🧹 Limpiar</button>
+        <span style="flex:1;"></span>
+        <span id="statsDisplay" style="background:white; border:1px solid #e2e8f0; border-radius:20px; padding:6px 14px; font-size:0.85rem; display:none;">
+            📇 <span id="statTotal">0</span> | 🗑️ <span id="statDups">0</span> | 🚫 <span id="statEmpty">0</span>
+        </span>
+    </div>
+
+    <!-- Progreso -->
+    <div class="progress-container" id="progressContainer" style="display:none;">
+        <div style="display:flex; justify-content:space-between;"><span id="progressText">Procesando...</span><span id="progressPercent">0%</span></div>
+        <div class="progress-track"><div id="progressBar" class="progress-bar"></div></div>
+        <div style="margin-top:8px;"><button class="btn btn-danger" id="cancelBtn">Cancelar</button></div>
+    </div>
+
+    <!-- Log -->
+    <div class="log-box" id="logBox"><span class="log-ok">● Sistema listo. Configurá APIs y cargá archivos.</span></div>
+
+    <!-- Resultados -->
+    <div class="panel" id="resultsPanel" style="display:none;">
+        <div class="panel-title">📋 Contactos <span id="tableCount">0</span></div>
+        <input type="text" id="searchInput" placeholder="Buscar..." style="width:100%; padding:8px; border:1px solid #cbd5e1; border-radius:20px; margin-bottom:10px;">
+        <div style="max-height:400px; overflow:auto;">
+            <table id="previewTable">
+                <thead><tr><th data-col="nombre">Nombre</th><th data-col="apellido">Apellido</th><th>Empresa</th><th>Cargo</th><th>WhatsApp</th><th>Email</th></tr></thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Exportar -->
+    <div class="panel" id="exportPanel" style="display:none;">
+        <div class="panel-title">📤 Exportar</div>
+        <button class="btn btn-success" id="exportCsvBtn">📊 CSV</button>
+        <button class="btn btn-outline" id="exportJsonBtn">📦 JSON</button>
+        <button class="btn btn-outline" id="exportVcfBtn">📱 VCF</button>
+    </div>
+</div>
+
+<!-- Modal duplicados -->
+<div class="modal-backdrop" id="dupeModal">
+    <div class="modal">
+        <h3>🔍 Revisar duplicados</h3>
+        <div id="dupeGroupsContainer"></div>
+        <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:20px;">
+            <button class="btn btn-outline" id="cancelDupeBtn">Cancelar</button>
+            <button class="btn btn-primary" id="applyDupeBtn">Aplicar</button>
+        </div>
+    </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+(() => {
+    // Proveedores
+    const PROVIDERS = {
+        groq: { name:'Groq', emoji:'🟢', endpoint:'https://api.groq.com/openai/v1/chat/completions',
+            headers: k => ({'Authorization':`Bearer ${k}`,'Content-Type':'application/json'}),
+            body: msgs => JSON.stringify({model:'llama-3.3-70b-versatile', messages:msgs, temperature:0.1, response_format:{type:'json_object'}}),
+            parse: d => JSON.parse(d.choices[0].message.content) },
+        gemini: { name:'Gemini', emoji:'🔵', endpoint:'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent',
+            headers: () => ({'Content-Type':'application/json'}),
+            body: msgs => JSON.stringify({contents:[{parts:[{text: msgs.map(m=>m.content).join('\n')}]}], generationConfig:{temperature:0.1, responseMimeType:'application/json'}}),
+            parse: d => JSON.parse(d.candidates[0].content.parts[0].text),
+            urlWithKey: (url,k) => `${url}?key=${k}` },
+        claude: { name:'Claude', emoji:'🟠', endpoint:'https://api.anthropic.com/v1/messages',
+            headers: k => ({'x-api-key':k,'anthropic-version':'2023-06-01','Content-Type':'application/json'}),
+            body: msgs => { const sys = msgs.find(m=>m.role==='system')?.content||''; const usr = msgs.find(m=>m.role==='user')?.content||'';
+                return JSON.stringify({model:'claude-3-haiku-20240307', max_tokens:1024, system:sys, messages:[{role:'user',content:usr}]}); },
+            parse: d => JSON.parse(d.content[0].text) }
+    };
+
+    // Estado
+    let apiKeys = { groq:[], gemini:[], claude:[] };
+    let allFiles = [];
+    let cleanedContacts = [];
+    let filteredContacts = [];
+    let isProcessing = false, isPaused = false, cancelRequested = false;
+    let statsRemoved = 0, statsEmpty = 0;
+    let columnMappingCache = new Map();
+    let pendingDupeGroups = [];
+
+    // DOM
+    const $ = id => document.getElementById(id);
+    const logBox = $('logBox'), logLines = [];
+    function addLog(msg, type='') {
+        const cls = type==='ok'?'log-ok':type==='err'?'log-err':'';
+        logLines.push(`<span class="${cls}">[${new Date().toLocaleTimeString()}] ${msg}</span>`);
+        if(logLines.length>100) logLines.shift();
+        logBox.innerHTML = logLines.join('<br>'); logBox.scrollTop = logBox.scrollHeight;
+    }
+    function toast(msg, success) {
+        const el = document.createElement('div'); el.className = 'toast'; el.style.background = success?'#166534':'#1e293b';
+        el.textContent = msg; $('toastContainer').appendChild(el); setTimeout(()=>el.remove(),3000);
+    }
+
+    // Persistencia APIs
+    function loadKeys() { try{ const s=localStorage.getItem('cu_keys_v5'); if(s) apiKeys = {...apiKeys, ...JSON.parse(s)}; }catch(e){} }
+    function saveKeys() { localStorage.setItem('cu_keys_v5', JSON.stringify(apiKeys)); }
+    function renderApiPanel() {
+        let total=0, html='';
+        for(let [id, p] of Object.entries(PROVIDERS)) {
+            const keys = apiKeys[id]||[]; total += keys.length;
+            html += `<div class="provider-card ${keys.length?'active':''}">
+                <div class="provider-header"><span>${p.emoji} ${p.name}</span><span class="badge">${keys.length}</span></div>
+                <div class="key-input-group">
+                    <input type="password" id="input-${id}" placeholder="API Key" autocomplete="off">
+                    <button class="btn btn-outline" data-add="${id}" style="padding:4px 12px;">➕</button>
+                </div>
+                <div class="key-list" id="keylist-${id}">`;
+            keys.forEach((k,i) => { const masked = k.slice(0,5)+'••••'+k.slice(-4); html += `<span class="key-badge">${masked}<button data-del="${id}:${i}" style="background:none;border:none;cursor:pointer;">✕</button></span>`; });
+            html += `</div></div>`;
+        }
+        $('apiKeysContainer').innerHTML = html;
+        $('totalKeysCount').textContent = `${total} clave${total!==1?'s':''}`;
+        document.querySelectorAll('[data-add]').forEach(b => b.addEventListener('click', e => {
+            const pid = e.target.dataset.add; const inp = $(`input-${pid}`); const key = inp.value.trim();
+            if(key && !apiKeys[pid].includes(key)) { apiKeys[pid].push(key); saveKeys(); renderApiPanel(); addLog(`Clave ${PROVIDERS[pid].name} agregada`,'ok'); }
+            inp.value = '';
+        }));
+        document.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', e => {
+            const [pid, idx] = e.target.dataset.del.split(':'); apiKeys[pid].splice(idx,1); saveKeys(); renderApiPanel();
+            addLog(`Clave eliminada de ${PROVIDERS[pid].name}`);
+        }));
+    }
+
+    // Importar/Exportar configuración
+    function exportConfig() {
+        const blob = new Blob([JSON.stringify(apiKeys, null, 2)], {type:'application/json'});
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'contact_unifier_config.json';
+        a.click();
+        addLog('Configuración exportada','ok');
+    }
+    function importConfig(file) {
+        const reader = new FileReader();
+        reader.onload = e => {
+            try {
+                const imported = JSON.parse(e.target.result);
+                if (imported.groq && imported.gemini && imported.claude) {
+                    apiKeys = imported;
+                    saveKeys();
+                    renderApiPanel();
+                    addLog('Configuración importada correctamente','ok');
+                    toast('Configuración cargada', true);
+                } else throw new Error('Formato inválido');
+            } catch(err) {
+                addLog('Error al importar: '+err.message, 'err');
+                toast('Error en archivo de configuración');
+            }
+            $('importConfigInput').value = '';
+        };
+        reader.readAsText(file);
+    }
+
+    // IA rotativa
+    async function callAI(msgs) {
+        for(let [pid, p] of Object.entries(PROVIDERS)) {
+            for(let key of apiKeys[pid]||[]) {
+                try {
+                    let url = p.endpoint; if(p.urlWithKey) url = p.urlWithKey(url, key);
+                    const res = await fetch(url, {method:'POST', headers:p.headers(key), body:p.body(msgs)});
+                    if(!res.ok) { if(res.status===429) continue; throw new Error(`HTTP ${res.status}`); }
+                    const data = await res.json(); addLog(`${p.emoji} ${p.name} OK`, 'ok');
+                    return p.parse(data);
+                } catch(e) { addLog(`Error ${p.name}: ${e.message}`, 'err'); }
+            }
+        }
+        throw new Error('Sin respuesta de IA');
+    }
+
+    // Mapeo columnas
+    const SYNONYMS = {
+        firstName: ['nombre','first','given'], lastName: ['apellido','last','surname'],
+        email: ['email','correo','mail'], phone: ['phone','teléfono','celular','whatsapp'],
+        company: ['empresa','company','organización'], title: ['cargo','title','puesto']
+    };
+    function heuristic(headers) {
+        const map = {};
+        for(let [f, syns] of Object.entries(SYNONYMS))
+            for(let h of headers) if(syns.some(s => h.toLowerCase().includes(s))) { map[f] = h; break; }
+        return map;
+    }
+    async function getMapping(headers) {
+        const key = headers.join('|'); if(columnMappingCache.has(key)) return columnMappingCache.get(key);
+        const heur = heuristic(headers);
+        if(Object.keys(heur).length>=3 || !Object.values(apiKeys).flat().length) { columnMappingCache.set(key, heur); return heur; }
+        try {
+            const ai = await callAI([{role:'system',content:'Devuelve JSON con firstName, lastName, email, phone, company, title según estos encabezados.'},
+                {role:'user',content: JSON.stringify(headers)}]);
+            const merged = {...heur, ...ai}; columnMappingCache.set(key, merged); return merged;
+        } catch { columnMappingCache.set(key, heur); return heur; }
+    }
+
+    // Teléfono
+    function bestPhone(arr) {
+        const country = $('defaultCountry').value;
+        let best = '';
+        for(let raw of arr) {
+            let cleaned = String(raw).replace(/[^\d+]/g, '');
+            if(cleaned.length<6) continue;
+            try {
+                const p = libphonenumber.parsePhoneNumber(cleaned, country==='ZZ'?undefined:country);
+                if(p?.isValid()) { best = p.format('E.164'); break; }
+            } catch(e) {}
+            if(!best && cleaned.length>=8) best = cleaned;
+        }
+        return best ? (best.startsWith('+')?best:'?'+best) : '';
+    }
+
+    // Limpieza
+    function capitalize(s) { return s.toLowerCase().replace(/(?:^|\s)\S/g, c=>c.toUpperCase()); }
+    async function cleanContact(raw, mapping) {
+        const get = f => mapping[f] ? String(raw[mapping[f]]||'').trim() : '';
+        let fn = get('firstName'), ln = get('lastName');
+        if(!fn && !ln) {
+            const full = raw.full_name || raw.display_name || raw.fn || raw.name || '';
+            if(full) {
+                if($('aiNameSplitToggle').checked) {
+                    try {
+                        const ai = await callAI([{role:'system',content:'Divide nombre completo en JSON {nombre, apellido}'},{role:'user',content:full}]);
+                        fn = ai.nombre; ln = ai.apellido;
+                    } catch(e) {}
+                }
+                if(!fn) {
+                    const parts = full.split(','); 
+                    if(parts.length===2) { ln=parts[0].trim(); fn=parts[1].trim(); }
+                    else { const ws = full.trim().split(/\s+/); fn = ws.slice(0,-1).join(' ')||ws[0]; ln = ws.length>1?ws[ws.length-1]:''; }
+                }
+            }
+        }
+        fn = capitalize(fn); ln = capitalize(ln);
+        const empresa = capitalize(get('company')), cargo = get('title');
+        const emails = (mapping.email?String(raw[mapping.email]||'').split(/[;,:::]/):[]).map(e=>e.trim().toLowerCase()).filter(e=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
+        const email = emails[0] || '';
+        const phones = mapping.phone ? String(raw[mapping.phone]||'').split(/[;,:::]/) : [];
+        const whatsapp = bestPhone(phones);
+        return { nombre:fn, apellido:ln, empresa, cargo, whatsapp, email };
+    }
+
+    // Dedup
+    function buildGroups(contacts, threshold) {
+        const groups = [], used = new Set();
+        const fuzzy = $('fuzzyToggle').checked;
+        for(let i=0; i<contacts.length; i++) {
+            if(used.has(i)) continue;
+            const group = [contacts[i]]; used.add(i);
+            for(let j=i+1; j<contacts.length; j++) {
+                if(used.has(j)) continue;
+                const a=contacts[i], b=contacts[j];
+                if((a.whatsapp && b.whatsapp && a.whatsapp.replace(/\D/g,'')===b.whatsapp.replace(/\D/g,'')) ||
+                   (a.email && b.email && a.email===b.email)) { group.push(b); used.add(j); continue; }
+                if(fuzzy) {
+                    const nameA = `${a.nombre} ${a.apellido}`.trim().toLowerCase();
+                    const nameB = `${b.nombre} ${b.apellido}`.trim().toLowerCase();
+                    if(nameA && nameB && jaroWinkler(nameA, nameB) >= threshold) { group.push(b); used.add(j); }
+                }
+            }
+            groups.push(group);
+        }
+        return groups;
+    }
+    function mergeGroup(group) {
+        const merged = {nombre:'', apellido:'', empresa:'', cargo:'', whatsapp:'', email:''};
+        const fields = ['nombre','apellido','empresa','cargo','whatsapp','email'];
+        const best = group.reduce((a,b) => fields.reduce((s,f)=>s+(b[f]?1:0),0) > fields.reduce((s,f)=>s+(a[f]?1:0),0) ? b : a);
+        Object.assign(merged, best);
+        group.forEach(c => fields.forEach(f => { if(!merged[f] && c[f]) merged[f] = c[f]; }));
+        return merged;
+    }
+    async function deduplicate(contacts) {
+        if(!$('dedupToggle').checked) return contacts;
+        const groups = buildGroups(contacts, parseFloat($('fuzzyThreshold').value));
+        const dupGroups = groups.filter(g => g.length>1);
+        if($('reviewDupesToggle').checked && dupGroups.length) {
+            pendingDupeGroups = dupGroups;
+            return await new Promise(resolve => {
+                showModal(dupGroups, (approved) => {
+                    const result = [];
+                    groups.forEach(g => {
+                        if(g.length===1) result.push(g[0]);
+                        else {
+                            const idx = dupGroups.indexOf(g);
+                            if(idx>=0 && approved[idx]) { result.push(mergeGroup(g)); statsRemoved += g.length-1; }
+                            else g.forEach(c => result.push(c));
+                        }
+                    });
+                    resolve(result);
+                });
+            });
+        }
+        const result = [];
+        groups.forEach(g => { if(g.length===1) result.push(g[0]); else { result.push(mergeGroup(g)); statsRemoved += g.length-1; } });
+        return result;
+    }
+    function showModal(groups, cb) {
+        $('dupeGroupsContainer').innerHTML = '';
+        const checks = groups.map(() => true);
+        groups.forEach((g,i) => {
+            const div = document.createElement('div'); div.style.border='1px solid #ccc'; div.style.padding='10px'; div.style.margin='10px 0';
+            const merged = mergeGroup(g);
+            div.innerHTML = `<label><input type="checkbox" checked data-idx="${i}"> <strong>Grupo ${i+1} (${g.length})</strong></label>
+                <div><strong>Resultado:</strong> ${merged.nombre} ${merged.apellido} | ${merged.whatsapp} | ${merged.email}</div>
+                <div><em>Originales:</em> ${g.map(c=>`${c.nombre} ${c.apellido}`).join(' · ')}</div>`;
+            $('dupeGroupsContainer').appendChild(div);
+        });
+        $('dupeModal').classList.add('open');
+        document.querySelectorAll('[data-idx]').forEach(cb => cb.addEventListener('change', e => checks[e.target.dataset.idx] = e.target.checked));
+        $('applyDupeBtn').onclick = () => { $('dupeModal').classList.remove('open'); cb(checks); };
+        $('cancelDupeBtn').onclick = () => { $('dupeModal').classList.remove('open'); cb(groups.map(()=>false)); };
+    }
+
+    // Parseo
+    function parseCSV(f) { return new Promise(r => Papa.parse(f, {header:true, skipEmptyLines:true, complete: d=>r(d.data.map(o=>{ const n={}; Object.entries(o).forEach(([k,v])=>n[k.trim().toLowerCase().replace(/\s+/g,'_')]=v); return n; })), error:()=>r([])})); }
+    function parseExcel(f) { return new Promise(r => { const reader=new FileReader(); reader.onload=e=>{ const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'}); const rows=[]; wb.SheetNames.forEach(n=>{ const s=wb.Sheets[n]; const raw=XLSX.utils.sheet_to_json(s,{header:1}); if(raw.length<2)return; const h=raw[0].map(c=>String(c||'').trim()); for(let i=1;i<raw.length;i++){ const obj={}; h.forEach((k,j)=>obj[k]=raw[i][j]); rows.push(obj); } }); r(rows.map(o=>{ const n={}; Object.entries(o).forEach(([k,v])=>n[k.trim().toLowerCase().replace(/\s+/g,'_')]=v); return n; })); }; reader.readAsArrayBuffer(f); }); }
+    function parseVCF(f) { return new Promise(r => { const reader=new FileReader(); reader.onload=e=>{ const t=e.target.result; const vcards=t.split(/END:VCARD/i).filter(p=>p.includes('BEGIN:VCARD')); const contacts=[]; vcards.forEach(v=>{ const obj={}; let fn=''; v.split(/\r?\n/).forEach(l=>{ const [prop,...rest]=l.split(':'); const val=rest.join(':'); const p=prop.toUpperCase().split(';')[0]; if(p==='FN')fn=val; else if(p==='N'){ const parts=val.split(';'); obj.last_name=parts[0]; obj.first_name=parts[1]; } else if(p==='ORG')obj.organization_name=val; else if(p==='TITLE')obj.organization_title=val; else if(p==='TEL'){ if(!obj.phone_values)obj.phone_values=[]; obj.phone_values.push(val); } else if(p==='EMAIL'){ if(!obj.email_values)obj.email_values=[]; obj.email_values.push(val); } }); if(!obj.first_name&&fn){ const parts=fn.trim().split(/\s+/); obj.first_name=parts.slice(0,-1).join(' ')||fn; obj.last_name=parts.length>1?parts[parts.length-1]:''; } contacts.push(obj); }); r(contacts); }; reader.readAsText(f); }); }
+    async function parseFile(f) { const ext=f.name.split('.').pop().toLowerCase(); if(ext==='csv'||ext==='txt') return parseCSV(f); if(ext==='xlsx'||ext==='xls') return parseExcel(f); if(ext==='vcf'||ext==='vcard') return parseVCF(f); return []; }
+
+    // Procesamiento
+    async function processAll() {
+        cleanedContacts = []; statsRemoved=0; statsEmpty=0;
+        const total = allFiles.length;
+        for(let i=0; i<allFiles.length; i++) {
+            if(cancelRequested) throw new Error('Cancelado');
+            while(isPaused) await new Promise(r=>setTimeout(r,300));
+            const item = allFiles[i];
+            addLog(`📄 ${item.relativePath}`);
+            const raw = await parseFile(item.file);
+            if(!raw.length) { updateProgress(i+1, total); continue; }
+            const mapping = await getMapping(Object.keys(raw[0]));
+            for(let r of raw) {
+                const c = await cleanContact(r, mapping);
+                if(!c.whatsapp && !c.email) { statsEmpty++; continue; }
+                cleanedContacts.push(c);
+                if(cleanedContacts.length % 200 === 0) await new Promise(r=>setTimeout(r,0));
+            }
+            updateProgress(i+1, total);
+        }
+        const before = cleanedContacts.length;
+        cleanedContacts = await deduplicate(cleanedContacts);
+        statsRemoved = before - cleanedContacts.length;
+        applyFilters();
+    }
+    function updateProgress(done, total) {
+        const pct = Math.round(done/total*100);
+        $('progressBar').style.width = pct+'%';
+        $('progressPercent').textContent = pct+'%';
+        $('progressText').textContent = `Archivos ${done}/${total}`;
+    }
+
+    // UI
+    function applyFilters() {
+        const q = $('searchInput').value.toLowerCase();
+        filteredContacts = cleanedContacts.filter(c => !q || Object.values(c).some(v=>String(v).toLowerCase().includes(q)));
+        renderTable();
+        $('statsDisplay').style.display = cleanedContacts.length?'inline-flex':'none';
+        $('statTotal').textContent = cleanedContacts.length;
+        $('statDups').textContent = statsRemoved;
+        $('statEmpty').textContent = statsEmpty;
+        $('resultsPanel').style.display = cleanedContacts.length?'block':'none';
+        $('exportPanel').style.display = cleanedContacts.length?'block':'none';
+    }
+    function renderTable() {
+        $('tableCount').textContent = filteredContacts.length;
+        const tbody = $('tableBody');
+        if(!filteredContacts.length) { tbody.innerHTML = '<tr><td colspan="6">Sin resultados</td></tr>'; return; }
+        tbody.innerHTML = filteredContacts.slice(0,500).map(c => `<tr><td>${c.nombre}</td><td>${c.apellido}</td><td>${c.empresa}</td><td>${c.cargo}</td><td>${c.whatsapp}</td><td>${c.email}</td></tr>`).join('');
+    }
+
+    // Carga archivos
+    async function traverse(entry, path='') {
+        if(entry.isFile) {
+            return new Promise(resolve => entry.file(f => resolve({file:f, relativePath:path+f.name})));
+        } else if(entry.isDirectory) {
+            const reader = entry.createReader();
+            const entries = await new Promise(resolve => reader.readEntries(resolve));
+            const files = [];
+            for(let e of entries) files.push(...await traverse(e, path+entry.name+'/'));
+            return files;
+        }
+        return [];
+    }
+    async function handleDrop(e) {
+        e.preventDefault(); $('dropzone').classList.remove('dragover');
+        const items = e.dataTransfer.items;
+        const newFiles = [];
+        for(let item of items) {
+            if(item.kind==='file') {
+                const entry = item.webkitGetAsEntry();
+                if(entry) newFiles.push(...await traverse(entry));
+                else { const f = item.getAsFile(); newFiles.push({file:f, relativePath:f.name}); }
+            }
+        }
+        addFiles(newFiles);
+    }
+    function addFiles(files) {
+        const supported = files.filter(f => /\.(csv|txt|xlsx|xls|vcf|vcard)$/i.test(f.file.name));
+        if(!supported.length) { toast('No hay archivos compatibles'); return; }
+        allFiles.push(...supported);
+        const summary = $('fileSummary'); summary.innerHTML = '';
+        const byExt = {}; allFiles.forEach(f => { const ext = f.file.name.split('.').pop().toLowerCase(); byExt[ext] = (byExt[ext]||0)+1; });
+        summary.innerHTML = `<span>📁 Total: ${allFiles.length}</span> ` + Object.entries(byExt).map(([e,c])=>`<span>.${e}: ${c}</span>`).join(' · ');
+        $('processBtn').disabled = false;
+        addLog(`${supported.length} archivos añadidos. Total: ${allFiles.length}`,'ok');
+    }
+
+    // Eventos
+    $('dropzone').addEventListener('dragover', e => { e.preventDefault(); $('dropzone').classList.add('dragover'); });
+    $('dropzone').addEventListener('dragleave', () => $('dropzone').classList.remove('dragover'));
+    $('dropzone').addEventListener('drop', handleDrop);
+    $('selectFolderBtn').addEventListener('click', () => $('folderInput').click());
+    $('selectFilesBtn').addEventListener('click', () => $('filesInput').click());
+    $('folderInput').addEventListener('change', e => { const files = Array.from(e.target.files).map(f => ({file:f, relativePath:f.webkitRelativePath})); addFiles(files); $('folderInput').value=''; });
+    $('filesInput').addEventListener('change', e => { const files = Array.from(e.target.files).map(f => ({file:f, relativePath:f.name})); addFiles(files); $('filesInput').value=''; });
+
+    $('processBtn').addEventListener('click', async () => {
+        if(!allFiles.length) return;
+        isProcessing = true; cancelRequested = false; isPaused = false;
+        $('processBtn').disabled = true; $('pauseBtn').disabled = false; $('clearBtn').disabled = true;
+        $('progressContainer').style.display = 'block'; $('progressBar').style.width = '0%';
+        try { await processAll(); toast(`✅ ${cleanedContacts.length} contactos`, true); }
+        catch(err) { addLog(`❌ ${err.message}`, 'err'); toast(err.message); }
+        finally { isProcessing = false; $('processBtn').disabled = false; $('pauseBtn').disabled = true; $('clearBtn').disabled = false; $('progressContainer').style.display = 'none'; }
+    });
+    $('pauseBtn').addEventListener('click', () => { isPaused = !isPaused; $('pauseBtn').textContent = isPaused?'▶ Reanudar':'⏸ Pausar'; });
+    $('cancelBtn').addEventListener('click', () => { if(isProcessing) cancelRequested = true; });
+    $('clearBtn').addEventListener('click', () => {
+        allFiles = []; cleanedContacts = []; filteredContacts = []; statsRemoved = statsEmpty = 0;
+        $('fileSummary').innerHTML = ''; $('processBtn').disabled = true;
+        $('resultsPanel').style.display = 'none'; $('exportPanel').style.display = 'none'; $('statsDisplay').style.display = 'none';
+        $('tableBody').innerHTML = '<tr><td colspan="6">No hay contactos</td></tr>';
+        addLog('🧹 Limpiado');
+    });
+    $('searchInput').addEventListener('input', applyFilters);
+
+    // Export
+    function getData() { return filteredContacts.length ? filteredContacts : cleanedContacts; }
+    $('exportCsvBtn').addEventListener('click', () => {
+        const data = getData(); if(!data.length) return;
+        const csv = ['Nombre,Apellido,Empresa,Cargo,WhatsApp,Email'].concat(data.map(c=>`"${c.nombre}","${c.apellido}","${c.empresa}","${c.cargo}","${c.whatsapp}","${c.email}"`)).join('\n');
+        download('\uFEFF'+csv, 'contactos.csv', 'text/csv');
+    });
+    $('exportJsonBtn').addEventListener('click', () => download(JSON.stringify(getData(),null,2), 'contactos.json', 'application/json'));
+    $('exportVcfBtn').addEventListener('click', () => {
+        const vcf = getData().map(c => `BEGIN:VCARD\nVERSION:3.0\nN:${c.apellido};${c.nombre};;;\nFN:${c.nombre} ${c.apellido}\n${c.empresa?'ORG:'+c.empresa+'\n':''}${c.cargo?'TITLE:'+c.cargo+'\n':''}${c.whatsapp?'TEL;TYPE=CELL:'+c.whatsapp+'\n':''}${c.email?'EMAIL:'+c.email+'\n':''}END:VCARD`).join('\n');
+        download(vcf, 'contactos.vcf', 'text/vcard');
+    });
+    function download(content, name, type) { const b=new Blob([content],{type}); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download=name; a.click(); }
+
+    // Config Import/Export
+    $('exportConfigBtn').addEventListener('click', exportConfig);
+    $('importConfigBtn').addEventListener('click', () => $('importConfigInput').click());
+    $('importConfigInput').addEventListener('change', e => { if(e.target.files.length) importConfig(e.target.files[0]); });
+
+    // Iniciar
+    loadKeys(); renderApiPanel(); addLog('🟢 Sistema listo (v3.2 con import/export)', 'ok');
+})();
+</script>
+</body>
+</html>
