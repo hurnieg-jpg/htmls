@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contact Management Application</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        h1 { color: #333; }
+        form { margin-bottom: 20px; }
+        input, button { padding: 10px; margin: 5px 0; width: 200px; }
+    </style>
+</head>
+<body>
+    <h1>Contact Management Application</h1>
+    <form id="contactForm">
+        <input type="text" id="name" placeholder="Name" required />
+        <input type="email" id="email" placeholder="Email" required />
+        <input type="text" id="phone" placeholder="Phone" required />
+        <button type="submit">Add Contact</button>
+    </form>
+    <h2>Contact List</h2>
+    <ul id="contactList"></ul>
+
+    <script>
+        const form = document.getElementById('contactForm');
+        const contactList = document.getElementById('contactList');
+        let contacts = [];
+
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const name = document.getElementById('name').value;
+            const email = document.getElementById('email').value;
+            const phone = document.getElementById('phone').value;
+
+            const contact = { name, email, phone };
+            contacts.push(contact);
+            displayContacts();
+            form.reset();
+        });
+
+        function displayContacts() {
+            contactList.innerHTML = '';
+            contacts.forEach((contact, index) => {
+                const li = document.createElement('li');
+                li.textContent = \
+                    `Name: ${contact.name}, Email: ${contact.email}, Phone: ${contact.phone}`;
+                contactList.appendChild(li);
+            });
+        }
+    </script>
+</body>
+</html>
