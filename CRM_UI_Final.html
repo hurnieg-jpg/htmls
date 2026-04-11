@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>CRM Inteligente</title>
+<style>
+body{font-family:Arial;background:#f4f6f9;margin:0}
+.header{background:#111;color:white;padding:15px;font-size:20px}
+.container{padding:20px}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:15px;margin-bottom:20px}
+.card{background:white;padding:15px;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,0.08)}
+button{padding:10px 15px;border:none;border-radius:6px;cursor:pointer}
+.primary{background:#0066ff;color:white}
+.success{background:#00a86b;color:white}
+table{width:100%;border-collapse:collapse;background:white}
+th,td{padding:10px;border-bottom:1px solid #eee;text-align:left}
+</style>
+</head>
+<body>
+
+<div class="header">CRM Inteligente IA</div>
+
+<div class="container">
+
+<div class="grid">
+<div class="card">
+<div>Contactos</div>
+<div id="total">0</div>
+</div>
+<div class="card">
+<div>Leads</div>
+<div id="leads">0</div>
+</div>
+<div class="card">
+<div>Ganados</div>
+<div id="won">0</div>
+</div>
+<div class="card">
+<div>Conversión</div>
+<div id="conversion">0%</div>
+</div>
+</div>
+
+<div style="margin-bottom:15px">
+<button class="primary" onclick="addContact()">Nuevo Contacto</button>
+<button class="success" onclick="runAI()">IA Limpieza Total</button>
+</div>
+
+<table id="contacts">
+<tr>
+<th>Nombre</th>
+<th>Empresa</th>
+<th>WhatsApp</th>
+<th>Estado</th>
+</tr>
+</table>
+
+</div>
+
+<script>
+window.contacts = [];
+
+function addContact(){
+
+const name = prompt('Nombre');
+const company = prompt('Empresa');
+const phone = prompt('WhatsApp');
+
+window.contacts.push({name,company,phone,status:'Lead'});
+
+render();
+
+}
+
+function render(){
+
+const table = document.getElementById('contacts');
+
+let html = `
+<tr>
+<th>Nombre</th>
+<th>Empresa</th>
+<th>WhatsApp</th>
+<th>Estado</th>
+</tr>
+`;
+
+window.contacts.forEach(c=>{
+html+=`
+<tr>
+<td>${c.name||''}</td>
+<td>${c.company||''}</td>
+<td>${c.phone||''}</td>
+<td>${c.status||'Lead'}</td>
+</tr>
+`;
+});
+
+ table.innerHTML = html;
+
+ updateDashboard();
+
+}
+
+function updateDashboard(){
+
+const total = window.contacts.length;
+const won = window.contacts.filter(c=>c.status==='Ganado').length;
+const leads = window.contacts.filter(c=>c.status==='Lead').length;
+
+const conversion = total ? Math.round((won/total)*100) : 0;
+
+ document.getElementById('total').innerText = total;
+ document.getElementById('won').innerText = won;
+ document.getElementById('leads').innerText = leads;
+ document.getElementById('conversion').innerText = conversion + '%';
+
+}
+
+async function runAI(){
+
+if(window.runFullAI){
+await window.runFullAI(window.contacts);
+render();
+}
+
+}
+
+</script>
+
+</body>
+</html>
