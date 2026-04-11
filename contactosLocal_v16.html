@@ -1,0 +1,1742 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ContactUnifier Pro v16 — Pablo Edition</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+<script src="https://unpkg.com/libphonenumber-js@1.10.53/bundle/libphonenumber-min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --white:#ffffff; --bg:#f8f9fc; --bg2:#f1f4f9;
+  --border:#e2e8f0; --border2:#cbd5e1;
+  --text:#0f172a; --text2:#475569; --text3:#94a3b8;
+  --blue:#2563eb; --blue-l:#dbeafe; --blue-d:#1d4ed8;
+  --green:#059669; --green-l:#d1fae5;
+  --orange:#ea580c; --orange-l:#ffedd5;
+  --red:#dc2626; --red-l:#fee2e2;
+  --purple:#7c3aed; --purple-l:#ede9fe;
+  --yellow:#d97706; --yellow-l:#fef3c7;
+  --cyan:#0891b2; --cyan-l:#cffafe;
+  --radius:10px; --shadow:0 1px 3px rgba(0,0,0,.08),0 4px 16px rgba(0,0,0,.04);
+  --shadow-lg:0 4px 24px rgba(0,0,0,.10);
+  --mono:'JetBrains Mono',monospace;
+  --font:'Inter',system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14px;line-height:1.5}
+
+/* LAYOUT */
+.sidebar{position:fixed;left:0;top:0;bottom:0;width:220px;background:var(--white);border-right:1px solid var(--border);padding:0;display:flex;flex-direction:column;z-index:50}
+.main{margin-left:220px;min-height:100vh;padding:28px 32px 80px}
+@media(max-width:768px){.sidebar{display:none}.main{margin-left:0;padding:16px}}
+
+/* SIDEBAR */
+.brand{padding:20px 18px 16px;border-bottom:1px solid var(--border)}
+.brand-name{font-size:15px;font-weight:700;color:var(--text);letter-spacing:-.02em}
+.brand-ver{font-size:10px;font-family:var(--mono);color:var(--text3);margin-top:2px}
+.nav{flex:1;overflow-y:auto;padding:10px 8px}
+.nav-item{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;cursor:pointer;color:var(--text2);font-size:13px;font-weight:500;transition:.12s;border:none;background:none;width:100%;text-align:left}
+.nav-item:hover{background:var(--bg2);color:var(--text)}
+.nav-item.active{background:var(--blue-l);color:var(--blue)}
+.nav-icon{font-size:15px;width:20px;text-align:center}
+.nav-sep{font-size:10px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.08em;padding:14px 10px 4px}
+.sidebar-footer{padding:12px 18px;border-top:1px solid var(--border);font-size:11px;color:var(--text3)}
+
+/* TOP BAR */
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;gap:16px;flex-wrap:wrap}
+.page-title{font-size:20px;font-weight:700;letter-spacing:-.03em;color:var(--text)}
+.page-sub{font-size:12px;color:var(--text3);margin-top:2px}
+
+/* STAT CARDS */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
+@media(max-width:900px){.stats-row{grid-template-columns:repeat(2,1fr)}}
+.stat-card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow)}
+.stat-val{font-size:24px;font-weight:700;color:var(--text);line-height:1;font-family:var(--mono)}
+.stat-lbl{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-top:4px}
+.stat-card.c-blue .stat-val{color:var(--blue)}
+.stat-card.c-green .stat-val{color:var(--green)}
+.stat-card.c-orange .stat-val{color:var(--orange)}
+.stat-card.c-red .stat-val{color:var(--red)}
+.stat-card.c-purple .stat-val{color:var(--purple)}
+
+/* CARDS */
+.card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:16px;box-shadow:var(--shadow)}
+.card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:12px;flex-wrap:wrap}
+.card-title{font-size:13px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:6px}
+.card-title .badge{font-size:10px;font-family:var(--mono);background:var(--bg2);color:var(--text3);padding:2px 7px;border-radius:20px;font-weight:400}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:7px;font-size:13px;font-weight:500;font-family:var(--font);cursor:pointer;border:1px solid transparent;transition:.12s;white-space:nowrap}
+.btn:disabled{opacity:.4;cursor:not-allowed;pointer-events:none}
+.btn-primary{background:var(--blue);color:#fff;border-color:var(--blue)}
+.btn-primary:hover{background:var(--blue-d)}
+.btn-outline{background:var(--white);color:var(--text);border-color:var(--border2)}
+.btn-outline:hover{background:var(--bg2);border-color:var(--text3)}
+.btn-green{background:var(--green);color:#fff}
+.btn-green:hover{background:#047857}
+.btn-red{background:var(--red-l);color:var(--red);border-color:#fca5a5}
+.btn-red:hover{background:#fecaca}
+.btn-sm{padding:5px 10px;font-size:12px}
+.btn-lg{padding:10px 22px;font-size:14px;font-weight:600}
+
+/* FORM ELEMENTS */
+input[type=text],input[type=password],input[type=number],select,textarea{
+  font-family:var(--font);font-size:13px;color:var(--text);background:var(--white);
+  border:1px solid var(--border2);border-radius:7px;padding:7px 11px;outline:none;
+  transition:border-color .12s,box-shadow .12s;width:100%
+}
+input:focus,select:focus,textarea:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+input[type=checkbox]{accent-color:var(--blue);width:14px;height:14px;cursor:pointer}
+label{font-size:13px;color:var(--text2);display:flex;align-items:center;gap:6px;cursor:pointer}
+
+/* TABS */
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--border);margin-bottom:16px}
+.tab{padding:8px 14px;font-size:13px;font-weight:500;color:var(--text3);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:.12s}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--blue);border-bottom-color:var(--blue)}
+.tab-pane{display:none}.tab-pane.active{display:block}
+
+/* AI PROVIDERS */
+.providers-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+.provider-card{border:1px solid var(--border);border-radius:var(--radius);padding:14px;background:var(--bg);transition:border-color .15s}
+.provider-card.active{border-color:#86efac;background:#f0fdf4}
+.provider-card.custom{border-style:dashed}
+.prov-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.prov-name{font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px}
+.prov-dot{width:7px;height:7px;border-radius:50%;background:var(--text3)}
+.provider-card.active .prov-dot{background:var(--green)}
+.prov-count{font-size:11px;font-family:var(--mono);background:var(--bg2);color:var(--text3);padding:2px 8px;border-radius:20px}
+.provider-card.active .prov-count{background:var(--green-l);color:var(--green)}
+.key-row{display:flex;gap:6px;margin-bottom:8px}
+.key-row input{font-family:var(--mono);font-size:12px}
+.key-chips{display:flex;flex-wrap:wrap;gap:4px}
+.key-chip{display:inline-flex;align-items:center;gap:4px;font-family:var(--mono);font-size:11px;background:var(--white);border:1px solid var(--border);padding:2px 8px;border-radius:4px;color:var(--text2)}
+.key-chip button{background:none;border:none;cursor:pointer;color:var(--text3);font-size:12px;padding:0;line-height:1}
+.key-chip button:hover{color:var(--red)}
+.model-input{font-size:12px;color:var(--text3);margin-top:6px}
+.model-input input{font-family:var(--mono);font-size:11px}
+
+/* DROPZONE */
+.dropzone{border:2px dashed var(--border2);border-radius:var(--radius);padding:36px 24px;text-align:center;cursor:pointer;transition:.2s;background:var(--bg)}
+.dropzone:hover,.dropzone.dragover{border-color:var(--blue);background:var(--blue-l)}
+.drop-icon{font-size:2.2rem;margin-bottom:10px}
+.drop-title{font-size:15px;font-weight:600;margin-bottom:4px}
+.drop-sub{font-size:12px;color:var(--text3)}
+.file-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.file-chip{font-size:12px;font-family:var(--mono);background:var(--bg2);border:1px solid var(--border);color:var(--text2);padding:3px 10px;border-radius:5px}
+
+/* OPTIONS */
+.opts-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;padding-top:14px;border-top:1px solid var(--border);margin-top:14px}
+.opt-item{display:flex;flex-direction:column;gap:4px}
+.opt-label{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em}
+
+/* TOOLBAR */
+.toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.toolbar-sep{flex:1}
+
+/* PROGRESS */
+.progress-card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:16px;display:none}
+.progress-meta{display:flex;justify-content:space-between;font-size:12px;font-family:var(--mono);color:var(--text2);margin-bottom:8px}
+.progress-bar-wrap{height:4px;background:var(--bg2);border-radius:4px;overflow:hidden}
+.progress-bar{height:4px;width:0;background:linear-gradient(90deg,var(--blue),var(--purple));border-radius:4px;transition:width .3s}
+.progress-sub{font-size:11px;color:var(--text3);margin-top:6px;font-family:var(--mono)}
+
+/* LOG */
+.log-box{background:#0f172a;border-radius:var(--radius);padding:12px 14px;font-family:var(--mono);font-size:11.5px;height:180px;overflow-y:auto;line-height:1.8;margin-bottom:16px}
+.log-box:empty::before{content:'> Esperando...';color:#334155}
+.l-ok{color:#4ade80}.l-err{color:#f87171}.l-inf{color:#94a3b8}.l-warn{color:#fbbf24}.l-api{color:#38bdf8}
+
+/* TABLE */
+.tbl-wrap{overflow-x:auto;border-radius:8px;border:1px solid var(--border)}
+table{width:100%;border-collapse:collapse;background:var(--white)}
+thead th{background:var(--bg);padding:9px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);border-bottom:1px solid var(--border);white-space:nowrap;cursor:pointer;user-select:none;font-weight:500}
+thead th:hover{color:var(--blue)}
+tbody td{padding:8px 12px;font-size:13px;border-bottom:1px solid var(--bg2);color:var(--text2);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+tbody td:first-child{color:var(--text);font-weight:500}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:#f8faff}
+.sort-arrow{font-size:9px;margin-left:3px;opacity:.5}
+.sort-arrow.active{opacity:1;color:var(--blue)}
+
+/* SEARCH */
+.search-row{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
+.search-box{flex:1;min-width:200px;font-family:var(--mono)}
+.result-count{font-size:12px;font-family:var(--mono);color:var(--text3);white-space:nowrap}
+
+/* MODAL */
+.modal-bd{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;align-items:center;justify-content:center;backdrop-filter:blur(3px)}
+.modal-bd.open{display:flex}
+.modal{background:var(--white);border-radius:14px;padding:24px;max-width:600px;width:92%;max-height:80vh;overflow-y:auto;box-shadow:var(--shadow-lg)}
+.modal h3{font-size:15px;font-weight:700;margin-bottom:14px}
+.dupe-group{border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:8px;background:var(--bg)}
+.dupe-group label{font-size:13px;font-weight:600;margin-bottom:6px}
+.dupe-merged{font-size:11px;font-family:var(--mono);color:var(--green);margin:4px 0}
+.dupe-origs{font-size:11px;color:var(--text3);font-family:var(--mono)}
+.modal-footer{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
+
+/* TOAST */
+.toast-wrap{position:fixed;bottom:20px;right:20px;z-index:300;display:flex;flex-direction:column;gap:6px}
+.toast{background:var(--text);color:#fff;padding:9px 16px;border-radius:8px;font-size:13px;display:flex;align-items:center;gap:8px;box-shadow:var(--shadow-lg);animation:toastIn .2s ease;border-left:3px solid var(--text3)}
+.toast.ok{border-left-color:var(--green)}.toast.err{border-left-color:var(--red)}.toast.warn{border-left-color:var(--yellow)}
+@keyframes toastIn{from{transform:translateX(30px);opacity:0}to{transform:translateX(0);opacity:1}}
+
+/* ADD PROVIDER SECTION */
+.add-prov-form{border:1px dashed var(--border2);border-radius:var(--radius);padding:14px;margin-top:12px;background:var(--bg)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+.form-group{display:flex;flex-direction:column;gap:4px}
+.form-group label{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em}
+
+/* PAGINATION */
+.pagination{display:flex;align-items:center;gap:6px;margin-top:12px;justify-content:center}
+.page-btn{padding:5px 10px;border-radius:6px;border:1px solid var(--border);background:var(--white);cursor:pointer;font-size:12px;color:var(--text2)}
+.page-btn:hover{background:var(--bg2)}.page-btn.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+.page-info{font-size:12px;color:var(--text3);font-family:var(--mono);margin:0 6px}
+
+/* BADGE PILL */
+.pill{font-size:10px;font-family:var(--mono);padding:2px 8px;border-radius:20px;font-weight:500}
+.pill-blue{background:var(--blue-l);color:var(--blue)}
+.pill-green{background:var(--green-l);color:var(--green)}
+.pill-orange{background:var(--orange-l);color:var(--orange)}
+.pill-purple{background:var(--purple-l);color:var(--purple)}
+
+/* SECTION */
+.section{display:none}.section.active{display:block}
+
+/* PERF MODE INDICATOR */
+.perf-badge{font-size:11px;font-family:var(--mono);padding:3px 9px;border-radius:5px;border:1px solid;font-weight:500}
+.perf-fast{background:var(--green-l);color:var(--green);border-color:#86efac}
+.perf-normal{background:var(--blue-l);color:var(--blue);border-color:#93c5fd}
+.perf-consensus{background:var(--purple-l);color:var(--purple);border-color:#c4b5fd}
+
+/* COLLAPSE */
+details summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--text);user-select:none;list-style:none;display:flex;align-items:center;gap:6px}
+details summary::before{content:'>';font-size:9px;color:var(--text3);transition:.15s}
+details[open] summary::before{transform:rotate(90deg)}
+details>div{padding-top:12px}
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-track{background:var(--bg2)}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+
+/* TAG */
+.tag{display:inline-block;font-size:10px;padding:2px 7px;border-radius:4px;font-family:var(--mono)}
+.tag-new{background:var(--purple-l);color:var(--purple)}
+.tag-stable{background:var(--green-l);color:var(--green)}
+
+/* CONSENSUS STATS */
+.consensus-stats{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;padding:8px 12px;background:var(--bg);border-radius:6px;font-size:11px;font-family:var(--mono)}
+.consensus-stat{display:flex;align-items:center;gap:4px}
+.consensus-stat .dot{width:6px;height:6px;border-radius:50%}
+.consensus-stat .dot.ok{background:var(--green)}
+.consensus-stat .dot.err{background:var(--red)}
+.consensus-stat .dot.warn{background:var(--yellow)}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="brand">
+    <div class="brand-name">ContactUnifier</div>
+    <div class="brand-ver">v16.0 Stable</div>
+  </div>
+  <div class="nav">
+    <button class="nav-item active" data-section="sec-ai" onclick="showSection('sec-ai',this)">
+      <span class="nav-icon">&#129302;</span> Proveedores IA
+    </button>
+    <button class="nav-item" data-section="sec-files" onclick="showSection('sec-files',this)">
+      <span class="nav-icon">&#128193;</span> Cargar Archivos
+    </button>
+    <button class="nav-item" data-section="sec-process" onclick="showSection('sec-process',this)">
+      <span class="nav-icon">&#9889;</span> Procesar
+    </button>
+    <button class="nav-item" data-section="sec-results" onclick="showSection('sec-results',this)">
+      <span class="nav-icon">&#128203;</span> Resultados
+    </button>
+    <button class="nav-item" data-section="sec-export" onclick="showSection('sec-export',this)">
+      <span class="nav-icon">&#128228;</span> Exportar
+    </button>
+    <div class="nav-sep">Avanzado</div>
+    <button class="nav-item" data-section="sec-config" onclick="showSection('sec-config',this)">
+      <span class="nav-icon">&#9881;&#65039;</span> Configuracion
+    </button>
+    <button class="nav-item" data-section="sec-log" onclick="showSection('sec-log',this)">
+      <span class="nav-icon">&#128421;&#65039;</span> Registro
+    </button>
+  </div>
+  <div class="sidebar-footer">100% local - Consenso Multi-IA</div>
+</nav>
+
+<!-- MAIN CONTENT -->
+<main class="main">
+
+  <!-- STATS ROW -->
+  <div class="stats-row">
+    <div class="stat-card c-blue"><div class="stat-val" id="statTotal">0</div><div class="stat-lbl">Contactos totales</div></div>
+    <div class="stat-card c-green"><div class="stat-val" id="statUnique">0</div><div class="stat-lbl">Unicos limpios</div></div>
+    <div class="stat-card c-orange"><div class="stat-val" id="statDups">0</div><div class="stat-lbl">Duplicados quitados</div></div>
+    <div class="stat-card c-purple"><div class="stat-val" id="statAICalls">0</div><div class="stat-lbl">Llamadas IA</div></div>
+  </div>
+
+  <!-- AI PROVIDERS -->
+  <div class="section active" id="sec-ai">
+    <div class="topbar">
+      <div><div class="page-title">Proveedores de IA <span class="tag tag-stable">v16 Consenso</span></div>
+      <div class="page-sub">12 proveedores soportados. Consenso multi-IA por votacion. Las claves se guardan en tu navegador.</div></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-outline btn-sm" id="exportCfgBtn">Exportar config</button>
+        <button class="btn btn-outline btn-sm" id="importCfgBtn">Importar config</button>
+        <input type="file" id="importCfgInput" accept=".json" style="display:none">
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <span class="card-title">Proveedores activos <span class="badge" id="totalKeys">0 claves</span></span>
+        <span class="perf-badge perf-normal" id="aiStatusBadge">Sin IA - modo heuristico</span>
+      </div>
+      <div class="providers-grid" id="providersGrid"></div>
+      <div class="consensus-stats" id="consensusStats" style="display:none">
+        <span class="consensus-stat"><span class="dot ok"></span> <span id="csOk">0</span> exitosas</span>
+        <span class="consensus-stat"><span class="dot err"></span> <span id="csErr">0</span> fallidas</span>
+        <span class="consensus-stat"><span class="dot warn"></span> <span id="csTimeout">0</span> timeout</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <details>
+        <summary>Agregar proveedor personalizado (cualquier API OpenAI-compatible)</summary>
+        <div>
+          <div class="add-prov-form">
+            <div class="form-row">
+              <div class="form-group"><label>Nombre del proveedor</label><input type="text" id="newProvName" placeholder="Ej: Mistral, Together, Perplexity..."></div>
+              <div class="form-group"><label>Emoji (opcional)</label><input type="text" id="newProvEmoji" placeholder="R" style="width:80px"></div>
+            </div>
+            <div class="form-group" style="margin-bottom:8px"><label>URL del endpoint</label><input type="text" id="newProvUrl" placeholder="https://api.mistral.ai/v1/chat/completions"></div>
+            <div class="form-group" style="margin-bottom:8px"><label>Modelo por defecto</label><input type="text" id="newProvModel" placeholder="mistral-medium, gpt-4o-mini, llama-3..."></div>
+            <div class="form-group" style="margin-bottom:10px"><label>Auth Header</label>
+              <select id="newProvAuth" style="width:auto">
+                <option value="bearer">Authorization: Bearer {key}</option>
+                <option value="x-api-key">x-api-key: {key}</option>
+                <option value="api-key">api-key: {key}</option>
+              </select>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-primary btn-sm" onclick="addCustomProvider()">Agregar proveedor</button>
+              <button class="btn btn-outline btn-sm" onclick="testProvider()">Probar conexion</button>
+            </div>
+            <div id="testResult" style="font-size:12px;margin-top:8px;font-family:var(--mono)"></div>
+          </div>
+          <p style="font-size:12px;color:var(--text3);margin-top:8px">
+            Compatible con: OpenAI, Groq, Gemini, Claude, Mistral, Together, Fireworks, Perplexity, DeepSeek, xAI, OpenRouter, Cohere, Ollama local, LM Studio, cualquier endpoint OpenAI-compatible.
+          </p>
+        </div>
+      </details>
+    </div>
+  </div>
+
+  <!-- FILES -->
+  <div class="section" id="sec-files">
+    <div class="topbar">
+      <div><div class="page-title">Cargar Archivos</div>
+      <div class="page-sub">CSV, XLSX, VCF, TXT, Carpetas completas. Soporta 200k+ contactos.</div></div>
+    </div>
+    <div class="card">
+      <div id="dropzone" class="dropzone">
+        <div class="drop-icon">&#128194;</div>
+        <div class="drop-title">Arrastra archivos o carpeta aqui</div>
+        <div class="drop-sub">CSV, XLSX, XLS, VCF, VCARD, TXT</div>
+        <div style="display:flex;gap:10px;justify-content:center;margin-top:14px">
+          <button class="btn btn-outline btn-sm" id="btnFolder">Seleccionar carpeta</button>
+          <button class="btn btn-outline btn-sm" id="btnFiles">Seleccionar archivos</button>
+        </div>
+        <input type="file" id="folderInput" webkitdirectory multiple style="display:none">
+        <input type="file" id="filesInput" multiple accept=".csv,.txt,.xlsx,.xls,.vcf,.vcard" style="display:none">
+      </div>
+      <div class="file-chips" id="fileChips"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><span class="card-title">Opciones de procesamiento</span></div>
+      <div class="opts-grid">
+        <div class="opt-item">
+          <div class="opt-label">Deduplicacion</div>
+          <label><input type="checkbox" id="optDedup" checked> Eliminar duplicados</label>
+        </div>
+        <div class="opt-item">
+          <div class="opt-label">Fuzzy matching</div>
+          <label><input type="checkbox" id="optFuzzy" checked> Nombres similares</label>
+        </div>
+        <div class="opt-item">
+          <div class="opt-label">Revision manual</div>
+          <label><input type="checkbox" id="optReview"> Revisar antes de fusionar</label>
+        </div>
+        <div class="opt-item">
+          <div class="opt-label">IA para nombres</div>
+          <label><input type="checkbox" id="optAINames"> Split con IA</label>
+        </div>
+        <div class="opt-item">
+          <div class="opt-label">IA para mapeo</div>
+          <label><input type="checkbox" id="optAIMapping" checked> Mapeo columnas con IA</label>
+        </div>
+        <div class="opt-item">
+          <div class="opt-label">Umbral fuzzy</div>
+          <input type="number" id="optThreshold" min="0.7" max="1" step="0.01" value="0.85" style="width:90px">
+        </div>
+        <div class="opt-item">
+          <div class="opt-label">Pais telefono</div>
+          <select id="optCountry" style="width:auto">
+            <option value="AR">Argentina</option>
+            <option value="MX">Mexico</option>
+            <option value="ES">Espana</option>
+            <option value="US">USA</option>
+            <option value="BR">Brasil</option>
+            <option value="CL">Chile</option>
+            <option value="CO">Colombia</option>
+            <option value="ZZ">Auto</option>
+          </select>
+        </div>
+        <div class="opt-item">
+          <div class="opt-label">Modo rendimiento</div>
+          <select id="optPerfMode">
+            <option value="normal">Normal (hasta 50k)</option>
+            <option value="turbo">Turbo (100k+)</option>
+            <option value="extreme">Extremo (200k+)</option>
+          </select>
+        </div>
+        <div class="opt-item">
+          <div class="opt-label">Batch size IA</div>
+          <input type="number" id="optBatchSize" value="10" min="1" max="50" style="width:90px">
+        </div>
+        <div class="opt-item">
+          <div class="opt-label">Timeout IA (seg)</div>
+          <input type="number" id="optTimeout" value="15" min="5" max="60" style="width:90px">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PROCESS -->
+  <div class="section" id="sec-process">
+    <div class="topbar">
+      <div><div class="page-title">Procesar Contactos</div>
+      <div class="page-sub">Limpieza, normalizacion, deduplicacion y mapeo con consenso multi-IA.</div></div>
+    </div>
+
+    <div class="toolbar">
+      <button class="btn btn-primary btn-lg" id="btnProcess" disabled>Iniciar procesamiento</button>
+      <button class="btn btn-outline" id="btnPause" disabled>Pausar</button>
+      <button class="btn btn-red" id="btnCancel" style="display:none">Cancelar</button>
+      <div class="toolbar-sep"></div>
+      <button class="btn btn-outline btn-sm" id="btnClear">Limpiar todo</button>
+    </div>
+
+    <div class="progress-card" id="progressCard">
+      <div class="progress-meta">
+        <span id="progressText">Inicializando...</span>
+        <span id="progressPct">0%</span>
+      </div>
+      <div class="progress-bar-wrap"><div class="progress-bar" id="progressBar"></div></div>
+      <div class="progress-sub" id="progressSub">-</div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><span class="card-title">Registro en tiempo real</span>
+        <button class="btn btn-outline btn-sm" onclick="clearLog()">Limpiar log</button>
+      </div>
+      <div class="log-box" id="logBox"></div>
+    </div>
+  </div>
+
+  <!-- RESULTS -->
+  <div class="section" id="sec-results">
+    <div class="topbar">
+      <div><div class="page-title">Resultados</div>
+      <div class="page-sub">Busqueda, ordenamiento y edicion de contactos procesados.</div></div>
+    </div>
+
+    <div class="card" id="resultCard" style="display:none">
+      <div class="search-row">
+        <input type="text" class="search-box" id="searchInput" placeholder="Buscar por nombre, empresa, email, telefono...">
+        <span class="result-count" id="resultCount">0 contactos</span>
+      </div>
+      <div class="tbl-wrap">
+        <table id="mainTable">
+          <thead>
+            <tr>
+              <th data-col="nombre">Nombre<span class="sort-arrow" id="sort-nombre"></span></th>
+              <th data-col="apellido">Apellido<span class="sort-arrow" id="sort-apellido"></span></th>
+              <th data-col="empresa">Empresa<span class="sort-arrow" id="sort-empresa"></span></th>
+              <th data-col="cargo">Cargo</th>
+              <th data-col="whatsapp">WhatsApp</th>
+              <th data-col="email">Email</th>
+              <th data-col="confidence">Conf</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+      <div class="pagination" id="pagination"></div>
+    </div>
+
+    <div id="emptyResults" class="card" style="text-align:center;padding:40px;color:var(--text3)">
+      <div style="font-size:2rem;margin-bottom:8px">&#128203;</div>
+      <div>Aun no hay contactos procesados. Carga archivos y presiona Procesar.</div>
+    </div>
+  </div>
+
+  <!-- EXPORT -->
+  <div class="section" id="sec-export">
+    <div class="topbar">
+      <div><div class="page-title">Exportar</div>
+      <div class="page-sub">CSV con BOM, JSON, VCF/vCard, o Google Contacts ready.</div></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><span class="card-title">Formatos de exportacion</span>
+        <span id="exportCount" style="font-size:12px;color:var(--text3);font-family:var(--mono)">0 contactos</span>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn btn-primary" id="btnExportCSV">CSV (Excel-ready)</button>
+        <button class="btn btn-outline" id="btnExportJSON">JSON</button>
+        <button class="btn btn-outline" id="btnExportVCF">VCF / vCard</button>
+        <button class="btn btn-outline" id="btnExportGContacts">Google Contacts CSV</button>
+        <button class="btn btn-outline" id="btnExportXLSX">Excel XLSX</button>
+      </div>
+      <p style="font-size:12px;color:var(--text3);margin-top:12px">
+        Exporta los contactos filtrados (si hay busqueda activa) o todos. El CSV incluye BOM UTF-8 para compatibilidad con Excel.
+      </p>
+    </div>
+  </div>
+
+  <!-- CONFIG -->
+  <div class="section" id="sec-config">
+    <div class="topbar">
+      <div><div class="page-title">Configuracion</div>
+      <div class="page-sub">Ajustes avanzados, importar/exportar todo el perfil.</div></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><span class="card-title">Perfil de configuracion</span></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-primary btn-sm" id="btnSaveProfile">Guardar perfil completo</button>
+        <button class="btn btn-outline btn-sm" id="btnLoadProfile">Cargar perfil</button>
+        <input type="file" id="loadProfileInput" accept=".json" style="display:none">
+        <button class="btn btn-outline btn-sm" id="btnResetAll">Resetear todo</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head"><span class="card-title">Ajustes avanzados</span></div>
+      <div class="opts-grid">
+        <div class="opt-item">
+          <div class="opt-label">Capitalizacion</div>
+          <select id="cfgCapitalize">
+            <option value="title">Title Case</option>
+            <option value="upper">MAYUSCULAS</option>
+            <option value="lower">minusculas</option>
+            <option value="none">Sin cambios</option>
+          </select>
+        </div>
+        <div class="opt-item">
+          <div class="opt-label">Separador CSV export</div>
+          <select id="cfgSep">
+            <option value=",">Coma (,)</option>
+            <option value=";">Punto y coma (;)</option>
+            <option value="\t">Tab</option>
+          </select>
+        </div>
+        <div class="opt-item">
+          <div class="opt-label">Filas por pagina</div>
+          <input type="number" id="cfgPageSize" value="100" min="20" max="1000" style="width:90px">
+        </div>
+        <div class="opt-item">
+          <div class="opt-label">Log max. lineas</div>
+          <input type="number" id="cfgLogMax" value="300" min="50" max="1000" style="width:90px">
+        </div>
+        <div class="opt-item">
+          <div class="opt-label">Min IAs consenso</div>
+          <input type="number" id="cfgMinConsensus" value="2" min="1" max="5" style="width:90px">
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head"><span class="card-title">Acerca de</span></div>
+      <p style="font-size:12px;color:var(--text2);line-height:1.7">
+        <strong>ContactUnifier Pro v16.0 Stable</strong> - Unificador de contactos con consenso multi-IA.<br>
+        Procesamiento 100% local en tu navegador con votacion entre multiples proveedores.<br>
+        Soporta 12 proveedores: Groq, OpenAI, Gemini, Claude, Mistral, Together, Perplexity, DeepSeek, Fireworks, xAI, OpenRouter, Cohere + Ollama local.<br>
+        Optimizado para grandes volumenes: modo Turbo (100k) y Extremo (200k+) con procesamiento por lotes e IndexedDB.<br>
+        Sin LangChain - fetch directo para maximo rendimiento.
+      </p>
+    </div>
+  </div>
+
+  <!-- LOG PAGE -->
+  <div class="section" id="sec-log">
+    <div class="topbar">
+      <div><div class="page-title">Registro de actividad</div></div>
+      <button class="btn btn-outline btn-sm" onclick="clearLog()">Limpiar</button>
+    </div>
+    <div class="card">
+      <div class="log-box" id="logBox2" style="height:500px"></div>
+    </div>
+  </div>
+
+</main>
+
+<!-- MODAL DUPLICADOS -->
+<div class="modal-bd" id="dupeModal">
+  <div class="modal">
+    <h3>Revisar duplicados detectados</h3>
+    <div id="dupeGroups"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" id="btnCancelDupe">Cancelar</button>
+      <button class="btn btn-primary" id="btnApplyDupe">Aplicar fusiones</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script>
+// ============================================================
+// CONTACTUNIFIER PRO v16.0 STABLE — Consenso Multi-IA
+// ============================================================
+(function(){
+'use strict';
+
+// ── UNIVERSAL AI PROVIDER REGISTRY (12 Providers) ──────────────
+let PROVIDERS = {
+  groq:{
+    name:'Groq',emoji:'G',
+    endpoint:'https://api.groq.com/openai/v1/chat/completions',
+    model:'llama-3.3-70b-versatile',
+    authHeader:'bearer',
+    keys:[]
+  },
+  openai:{
+    name:'OpenAI',emoji:'O',
+    endpoint:'https://api.openai.com/v1/chat/completions',
+    model:'gpt-4o-mini',
+    authHeader:'bearer',
+    keys:[]
+  },
+  gemini:{
+    name:'Gemini',emoji:'G',
+    endpoint:'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent',
+    model:'gemini-2.0-flash',
+    authHeader:'gemini',
+    keys:[],
+    isGemini:true
+  },
+  claude:{
+    name:'Claude',emoji:'C',
+    endpoint:'https://api.anthropic.com/v1/messages',
+    model:'claude-3-haiku-20240307',
+    authHeader:'x-api-key',
+    keys:[],
+    isClaude:true
+  },
+  mistral:{
+    name:'Mistral',emoji:'M',
+    endpoint:'https://api.mistral.ai/v1/chat/completions',
+    model:'mistral-small-latest',
+    authHeader:'bearer',
+    keys:[]
+  },
+  together:{
+    name:'Together AI',emoji:'T',
+    endpoint:'https://api.together.xyz/v1/chat/completions',
+    model:'meta-llama/Llama-3.3-70B-Instruct-Turbo',
+    authHeader:'bearer',
+    keys:[]
+  },
+  perplexity:{
+    name:'Perplexity',emoji:'P',
+    endpoint:'https://api.perplexity.ai/chat/completions',
+    model:'sonar',
+    authHeader:'bearer',
+    keys:[]
+  },
+  deepseek:{
+    name:'DeepSeek',emoji:'D',
+    endpoint:'https://api.deepseek.com/v1/chat/completions',
+    model:'deepseek-chat',
+    authHeader:'bearer',
+    keys:[]
+  },
+  fireworks:{
+    name:'Fireworks',emoji:'F',
+    endpoint:'https://api.fireworks.ai/inference/v1/chat/completions',
+    model:'accounts/fireworks/models/llama-v3p1-70b-instruct',
+    authHeader:'bearer',
+    keys:[]
+  },
+  xai:{
+    name:'xAI (Grok)',emoji:'X',
+    endpoint:'https://api.x.ai/v1/chat/completions',
+    model:'grok-beta',
+    authHeader:'bearer',
+    keys:[]
+  },
+  openrouter:{
+    name:'OpenRouter',emoji:'R',
+    endpoint:'https://openrouter.ai/api/v1/chat/completions',
+    model:'openai/gpt-4o-mini',
+    authHeader:'bearer',
+    keys:[]
+  },
+  cohere:{
+    name:'Cohere',emoji:'C',
+    endpoint:'https://api.cohere.ai/v1/chat',
+    model:'command-r-plus',
+    authHeader:'bearer',
+    keys:[],
+    isCohere:true
+  },
+  ollama:{
+    name:'Ollama (local)',emoji:'L',
+    endpoint:'http://localhost:11434/v1/chat/completions',
+    model:'llama3',
+    authHeader:'none',
+    keys:['local']
+  }
+};
+
+// ── STATE ────────────────────────────────────────────────────────
+let allFiles=[], cleanedContacts=[], filteredContacts=[];
+let statsTotal=0,statsUnique=0,statsDups=0,statsAICalls=0;
+let isProcessing=false,isPaused=false;
+let globalAbortController=null;
+let colMapCache=new Map();
+let sortCol=null,sortAsc=true;
+let currentPage=1;
+let pendingDupeGroups=[],dupeCallback=null;
+let consensusStats={ok:0,err:0,timeout:0};
+
+// ── HELPERS ──────────────────────────────────────────────────────
+const $=id=>document.getElementById(id);
+const cfg=()=>({
+  dedup:$('optDedup').checked,
+  fuzzy:$('optFuzzy').checked,
+  review:$('optReview').checked,
+  aiNames:$('optAINames').checked,
+  aiMapping:$('optAIMapping').checked,
+  threshold:parseFloat($('optThreshold').value)||0.85,
+  country:$('optCountry').value,
+  perfMode:$('optPerfMode').value,
+  batchSize:parseInt($('optBatchSize').value)||10,
+  timeout:(parseInt($('optTimeout').value)||15)*1000,
+  capitalize:$('cfgCapitalize')?.value||'title',
+  sep:$('cfgSep')?.value||',',
+  pageSize:parseInt($('cfgPageSize')?.value)||100,
+  logMax:parseInt($('cfgLogMax')?.value)||300,
+  minConsensus:parseInt($('cfgMinConsensus')?.value)||2
+});
+
+function maskKey(k){
+  if(!k||k==='local')return'local';
+  return k.slice(0,4)+'...'+k.slice(-3);
+}
+
+// ── LOG ──────────────────────────────────────────────────────────
+let logLines=[];
+function log(msg,type='inf'){
+  const t=new Date().toLocaleTimeString('es-AR',{hour12:false});
+  const cls={ok:'l-ok',err:'l-err',warn:'l-warn',inf:'l-inf',api:'l-api'}[type]||'l-inf';
+  const line=`<span class="${cls}">[${t}] ${msg}</span>`;
+  logLines.push(line);
+  const max=parseInt($('cfgLogMax')?.value)||300;
+  if(logLines.length>max) logLines.shift();
+  const html=logLines.join('<br>');
+  [$('logBox'),$('logBox2')].forEach(el=>{if(el){el.innerHTML=html;el.scrollTop=el.scrollHeight}});
+}
+function clearLog(){logLines=[];[$('logBox'),$('logBox2')].forEach(el=>{if(el)el.innerHTML=''});}
+window.clearLog=clearLog;
+
+// ── TOAST ────────────────────────────────────────────────────────
+function toast(msg,type=''){
+  const el=document.createElement('div');
+  el.className=`toast ${type}`;el.textContent=msg;
+  $('toastWrap').appendChild(el);setTimeout(()=>el.remove(),3500);
+}
+
+// ── STATS UPDATE ─────────────────────────────────────────────────
+function updateStats(){
+  $('statTotal').textContent=statsTotal;
+  $('statUnique').textContent=statsUnique;
+  $('statDups').textContent=statsDups;
+  $('statAICalls').textContent=statsAICalls;
+  $('exportCount').textContent=(filteredContacts.length||cleanedContacts.length)+' contactos';
+  // Consensus stats
+  if(consensusStats.ok+consensusStats.err+consensusStats.timeout>0){
+    $('consensusStats').style.display='flex';
+    $('csOk').textContent=consensusStats.ok;
+    $('csErr').textContent=consensusStats.err;
+    $('csTimeout').textContent=consensusStats.timeout;
+  }
+}
+
+// ── NAVIGATION ──────────────────────────────────────────────────
+function showSection(id,btn){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
+  $(id)?.classList.add('active');
+  btn?.classList.add('active');
+  if(id==='sec-results'){renderResults();}
+}
+window.showSection=showSection;
+
+// ── AI PROVIDER CALL WITH TIMEOUT (Single) ────────────────────────
+async function callSingleProvider(p,key,messages,timeout=15000){
+  const controller=new AbortController();
+  const timeoutId=setTimeout(()=>controller.abort(),timeout);
+  const sys=messages.find(m=>m.role==='system')?.content||'Responde solo con JSON valido, sin markdown.';
+  const usr=messages.find(m=>m.role==='user')?.content||'';
+
+  try{
+    // Gemini special format
+    if(p.isGemini){
+      const url=`${p.endpoint}?key=${key}`;
+      const body={contents:[{parts:[{text:`${sys}\n\n${usr}`}]}],generationConfig:{temperature:0.1,responseMimeType:'application/json'}};
+      const res=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:controller.signal});
+      clearTimeout(timeoutId);
+      if(!res.ok){
+        const errText=await res.text().catch(()=>'');
+        throw new Error(`HTTP ${res.status}: ${errText.slice(0,100)}`);
+      }
+      const d=await res.json();
+      return JSON.parse(d.candidates[0].content.parts[0].text);
+    }
+
+    // Claude special format
+    if(p.isClaude){
+      const headers={'x-api-key':key,'anthropic-version':'2023-06-01','Content-Type':'application/json','anthropic-dangerous-direct-browser-access':'true'};
+      const body={model:p.model,max_tokens:1024,system:sys,messages:[{role:'user',content:usr}]};
+      const res=await fetch(p.endpoint,{method:'POST',headers,body:JSON.stringify(body),signal:controller.signal});
+      clearTimeout(timeoutId);
+      if(!res.ok){
+        const errText=await res.text().catch(()=>'');
+        throw new Error(`HTTP ${res.status}: ${errText.slice(0,100)}`);
+      }
+      const d=await res.json();
+      return JSON.parse(d.content[0].text.replace(/```json|```/g,'').trim());
+    }
+
+    // Cohere special format
+    if(p.isCohere){
+      const headers={'Authorization':`Bearer ${key}`,'Content-Type':'application/json'};
+      const body={model:p.model,message:`${sys}\n\n${usr}`,temperature:0.1,response_format:{type:'json_object'}};
+      const res=await fetch(p.endpoint,{method:'POST',headers,body:JSON.stringify(body),signal:controller.signal});
+      clearTimeout(timeoutId);
+      if(!res.ok){
+        const errText=await res.text().catch(()=>'');
+        throw new Error(`HTTP ${res.status}: ${errText.slice(0,100)}`);
+      }
+      const d=await res.json();
+      return JSON.parse(d.text.replace(/```json|```/g,'').trim());
+    }
+
+    // OpenAI-compatible (default for all other providers)
+    const headers={'Content-Type':'application/json'};
+    if(p.authHeader==='bearer'&&key!=='local') headers['Authorization']=`Bearer ${key}`;
+    else if(p.authHeader==='x-api-key') headers['x-api-key']=key;
+    else if(p.authHeader==='api-key') headers['api-key']=key;
+
+    const body={
+      model:p.model,
+      messages:[{role:'system',content:sys},{role:'user',content:usr}],
+      temperature:0.1
+    };
+    // Only add response_format for providers that support it
+    if(!p.name.includes('Ollama')&&!p.name.includes('Fireworks')){
+      body.response_format={type:'json_object'};
+    }
+    
+    const res=await fetch(p.endpoint,{method:'POST',headers,body:JSON.stringify(body),signal:controller.signal});
+    clearTimeout(timeoutId);
+    if(!res.ok){
+      const errText=await res.text().catch(()=>'');
+      throw new Error(`HTTP ${res.status}: ${errText.slice(0,100)}`);
+    }
+    const d=await res.json();
+    const text=d.choices[0].message.content;
+    return JSON.parse(text.replace(/```json|```/g,'').trim());
+  }catch(e){
+    clearTimeout(timeoutId);
+    if(e.name==='AbortError')throw new Error('Timeout');
+    throw e;
+  }
+}
+
+// ── AI CONSENSUS CALL (Multi-Provider Voting) ────────────────────
+async function callAIConsensus(messages,expectedKeys=[]){
+  const cfgOpts=cfg();
+  const timeout=cfgOpts.timeout;
+  const minConsensus=cfgOpts.minConsensus;
+  
+  // Get all providers with keys
+  const activeProviders=Object.entries(PROVIDERS)
+    .filter(([id,p])=>(p.keys||[]).filter(k=>k).length>0);
+  
+  if(!activeProviders.length){
+    throw new Error('Sin proveedores IA configurados');
+  }
+
+  const results=[];
+  const promises=[];
+
+  // For each provider, iterate over all keys
+  for(const [id,p] of activeProviders){
+    for(const key of p.keys.filter(k=>k)){
+      promises.push((async()=>{
+        statsAICalls++;
+        const keyMask=maskKey(key);
+        try{
+          log(`[API] ${p.emoji} ${p.name} (${keyMask}) llamando...`,'api');
+          const result=await callSingleProvider(p,key,messages,timeout);
+          
+          // Validate response has expected keys
+          if(expectedKeys.length>0){
+            const hasExpected=expectedKeys.some(k=>result.hasOwnProperty(k));
+            if(!hasExpected){
+              log(`[API] ${p.emoji} ${p.name} (${keyMask}) respuesta sin claves esperadas`,'warn');
+              consensusStats.err++;
+              return null;
+            }
+          }
+          
+          log(`[API] ${p.emoji} ${p.name} (${keyMask}) OK`,'ok');
+          consensusStats.ok++;
+          return{provider:p.name,result};
+        }catch(e){
+          if(e.message==='Timeout'){
+            log(`[API] ${p.emoji} ${p.name} (${keyMask}) TIMEOUT ${timeout/1000}s`,'warn');
+            consensusStats.timeout++;
+          }else if(e.message.includes('429')||e.message.includes('rate')){
+            log(`[API] ${p.emoji} ${p.name} (${keyMask}) RATE LIMIT`,'warn');
+            consensusStats.err++;
+          }else if(e.message.includes('401')||e.message.includes('403')){
+            log(`[API] ${p.emoji} ${p.name} (${keyMask}) AUTH ERROR`,'err');
+            consensusStats.err++;
+          }else{
+            log(`[API] ${p.emoji} ${p.name} (${keyMask}) ERROR: ${e.message.slice(0,80)}`,'err');
+            consensusStats.err++;
+          }
+          return null;
+        }
+      })());
+    }
+  }
+
+  // Wait for all with Promise.allSettled
+  const settled=await Promise.allSettled(promises);
+  const successful=settled
+    .filter(s=>s.status==='fulfilled'&&s.value!==null)
+    .map(s=>s.value);
+
+  if(successful.length===0){
+    throw new Error('Ninguna IA respondio correctamente');
+  }
+
+  // Majority voting for each expected key
+  const consensus={};
+  const providers=successful.map(s=>s.provider);
+  
+  if(expectedKeys.length>0){
+    for(const key of expectedKeys){
+      const votes=new Map();
+      for(const s of successful){
+        const val=s.result[key];
+        if(val!==undefined&&val!==null&&val!==''){
+          const strVal=typeof val==='string'?val.toLowerCase().trim():JSON.stringify(val);
+          votes.set(strVal,(votes.get(strVal)||0)+1);
+        }
+      }
+      // Find majority
+      let maxVotes=0,winner=null;
+      for(const[val,count]of votes){
+        if(count>maxVotes){maxVotes=count;winner=val;}
+      }
+      if(winner!==null){
+        // Try to get original casing
+        for(const s of successful){
+          const v=s.result[key];
+          if(v&&(typeof v==='string'?v.toLowerCase().trim():JSON.stringify(v))===winner){
+            consensus[key]=v;
+            break;
+          }
+        }
+      }
+    }
+  }else{
+    // Just return first successful result if no expected keys
+    Object.assign(consensus,successful[0].result);
+  }
+
+  consensus._confidence=successful.length/promises.length;
+  consensus._contributors=successful.length;
+  consensus._providers=providers;
+  
+  log(`[Consenso] ${successful.length} IAs contribuyeron (${providers.join(', ')})`,'ok');
+  updateStats();
+  
+  return consensus;
+}
+
+// ── SIMPLE AI CALL (First Success) ────────────────────────────────
+async function callAI(messages){
+  const cfgOpts=cfg();
+  for(let [id,p] of Object.entries(PROVIDERS)){
+    for(let key of p.keys||[]){
+      if(key){
+        try{
+          statsAICalls++;
+          const result=await callSingleProvider(p,key,messages,cfgOpts.timeout);
+          log(`${p.emoji} ${p.name} OK`,'ok');
+          updateStats();
+          return result;
+        }catch(e){
+          log(`${p.name}: ${e.message.slice(0,60)}`,'warn');
+        }
+      }
+    }
+  }
+  throw new Error('Sin respuesta de IA - usando heuristica');
+}
+
+// Test a single provider
+async function testProvider(){
+  const name=$('newProvName').value.trim()||'Custom';
+  const url=$('newProvUrl').value.trim();
+  const model=$('newProvModel').value.trim()||'gpt-3.5-turbo';
+  const auth=$('newProvAuth').value;
+  $('testResult').textContent='Probando...';
+  try{
+    const p={name,model,endpoint:url,authHeader:auth};
+    const key=prompt(`Ingresa la API key para probar ${name}:`)||'local';
+    const result=await callSingleProvider(p,key,[
+      {role:'system',content:'Responde solo con JSON valido'},
+      {role:'user',content:'Devuelve {"status":"ok","msg":"conectado"}'}
+    ],10000);
+    $('testResult').textContent=`Conectado: ${JSON.stringify(result)}`;
+    $('testResult').style.color='var(--green)';
+  }catch(e){
+    $('testResult').textContent=`Error: ${e.message}`;
+    $('testResult').style.color='var(--red)';
+  }
+}
+window.testProvider=testProvider;
+
+// Add custom provider
+function addCustomProvider(){
+  const name=$('newProvName').value.trim();
+  const url=$('newProvUrl').value.trim();
+  const model=$('newProvModel').value.trim();
+  if(!name||!url){toast('Nombre y URL son requeridos','warn');return;}
+  const id='custom_'+Date.now();
+  PROVIDERS[id]={
+    name,emoji:$('newProvEmoji').value||'*',
+    endpoint:url,model:model||'default',
+    authHeader:$('newProvAuth').value,
+    keys:[],custom:true
+  };
+  saveProviders();renderProviders();
+  $('newProvName').value='';$('newProvUrl').value='';$('newProvModel').value='';
+  toast(`Proveedor "${name}" agregado`,'ok');
+  log(`Proveedor personalizado anadido: ${name}`,'ok');
+}
+window.addCustomProvider=addCustomProvider;
+
+// ── PROVIDER PANEL ────────────────────────────────────────────────
+function renderProviders(){
+  let html='',totalKeys=0;
+  for(let [id,p] of Object.entries(PROVIDERS)){
+    const keys=p.keys||[];
+    const validKeys=keys.filter(k=>k&&k!=='local');
+    totalKeys+=validKeys.length;
+    const active=(id==='ollama'&&keys.includes('local'))||validKeys.length>0;
+    html+=`<div class="provider-card${active?' active':''}${p.custom?' custom':''}">
+      <div class="prov-header">
+        <span class="prov-name"><span class="prov-dot"></span>[${p.emoji}] ${p.name}${p.custom?` <span class="pill pill-orange" style="font-size:9px">custom</span>`:''}</span>
+        <span class="prov-count">${id==='ollama'?(active?'activo':'inactivo'):validKeys.length+' key'+(validKeys.length!==1?'s':'')}</span>
+      </div>`;
+    if(id!=='ollama'){
+      html+=`<div class="key-row">
+        <input type="password" id="ki-${id}" placeholder="API Key..." autocomplete="off">
+        <button class="btn btn-outline btn-sm" data-add="${id}" style="padding:5px 9px">+</button>
+      </div>
+      <div class="key-chips">`;
+      validKeys.forEach((k,i)=>{
+        html+=`<span class="key-chip">${k.slice(0,5)}..${k.slice(-3)}<button data-del="${id}:${i}">x</button></span>`;
+      });
+      html+=`</div>`;
+    }else{
+      html+=`<p style="font-size:11px;color:var(--text3)">Requiere Ollama corriendo en localhost:11434</p>
+        <button class="btn btn-outline btn-sm" style="margin-top:6px" onclick="testOllama()">Probar Ollama</button>`;
+    }
+    html+=`<div class="model-input" style="margin-top:8px">
+      <input type="text" value="${p.model||''}" placeholder="Modelo..." onchange="updateModel('${id}',this.value)">
+    </div>`;
+    if(p.custom){html+=`<button class="btn btn-red btn-sm" style="margin-top:6px;font-size:11px" data-delprov="${id}">Quitar</button>`;}
+    html+=`</div>`;
+  }
+  $('providersGrid').innerHTML=html;
+  $('totalKeys').textContent=totalKeys+' claves';
+  
+  const hasAI=totalKeys>0||PROVIDERS.ollama?.keys?.includes('local');
+  const provCount=Object.values(PROVIDERS).filter(p=>(p.keys||[]).filter(k=>k&&(k!=='local'||p.name.includes('Ollama'))).length>0).length;
+  
+  if(hasAI){
+    $('aiStatusBadge').textContent=provCount>1?`Consenso activo - ${provCount} proveedores`:`IA activa - ${totalKeys} keys`;
+    $('aiStatusBadge').className='perf-badge '+(provCount>1?'perf-consensus':'perf-fast');
+  }else{
+    $('aiStatusBadge').textContent='Sin IA - modo heuristico';
+    $('aiStatusBadge').className='perf-badge perf-normal';
+  }
+
+  document.querySelectorAll('[data-add]').forEach(b=>b.addEventListener('click',e=>{
+    const pid=e.currentTarget.dataset.add;
+    const inp=$(`ki-${pid}`);const key=inp.value.trim();
+    if(key&&!PROVIDERS[pid].keys.includes(key)){PROVIDERS[pid].keys.push(key);saveProviders();renderProviders();log(`[${PROVIDERS[pid].emoji}] ${PROVIDERS[pid].name} key anadida`,'ok');}
+    inp.value='';
+  }));
+  document.querySelectorAll('[data-del]').forEach(b=>b.addEventListener('click',e=>{
+    const [pid,idx]=e.currentTarget.dataset.del.split(':');
+    PROVIDERS[pid].keys.splice(parseInt(idx),1);saveProviders();renderProviders();
+  }));
+  document.querySelectorAll('[data-delprov]').forEach(b=>b.addEventListener('click',e=>{
+    const pid=e.currentTarget.dataset.delprov;
+    if(confirm(`Eliminar proveedor "${PROVIDERS[pid].name}"?`)){delete PROVIDERS[pid];saveProviders();renderProviders();}
+  }));
+}
+function updateModel(id,val){if(PROVIDERS[id])PROVIDERS[id].model=val;saveProviders();}
+window.updateModel=updateModel;
+async function testOllama(){
+  try{
+    const res=await fetch('http://localhost:11434/v1/models');
+    if(res.ok){toast('Ollama conectado','ok');log('Ollama local disponible','ok');}
+    else throw new Error();
+  }catch{toast('Ollama no disponible','err');log('Ollama: no se pudo conectar. Esta corriendo?','err');}
+}
+window.testOllama=testOllama;
+
+// ── PERSIST PROVIDERS ────────────────────────────────────────────
+function saveProviders(){
+  localStorage.setItem('cu_providers_v16',JSON.stringify(PROVIDERS));
+}
+function loadProviders(){
+  try{const s=localStorage.getItem('cu_providers_v16');if(s){const saved=JSON.parse(s);
+    Object.entries(saved).forEach(([id,p])=>{
+      if(PROVIDERS[id])PROVIDERS[id].keys=p.keys||[];
+      else if(p.custom)PROVIDERS[id]=p;
+    });
+  }}catch(e){}
+}
+
+// ── CONFIG IMPORT/EXPORT ──────────────────────────────────────────
+function exportConfig(){
+  const blob=new Blob([JSON.stringify({providers:PROVIDERS,version:'16.0'},null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='contactunifier_config_v16.json';a.click();
+  log('Configuracion exportada','ok');
+}
+function importConfig(file){
+  const r=new FileReader();r.onload=e=>{
+    try{const d=JSON.parse(e.target.result);
+      if(d.providers){
+        Object.entries(d.providers).forEach(([id,p])=>{
+          if(PROVIDERS[id])PROVIDERS[id].keys=p.keys||[];
+          else if(p.custom)PROVIDERS[id]=p;
+        });
+        saveProviders();renderProviders();toast('Configuracion importada','ok');log('Config importada','ok');
+      }
+    }catch{toast('Error en archivo de config','err');}
+    $('importCfgInput').value='';
+  };r.readAsText(file);
+}
+$('exportCfgBtn').addEventListener('click',exportConfig);
+$('importCfgBtn').addEventListener('click',()=>$('importCfgInput').click());
+$('importCfgInput').addEventListener('change',e=>{if(e.target.files.length)importConfig(e.target.files[0]);});
+
+// Profile save/load
+$('btnSaveProfile')?.addEventListener('click',()=>{
+  const profile={providers:PROVIDERS,options:{
+    dedup:$('optDedup').checked,fuzzy:$('optFuzzy').checked,
+    threshold:$('optThreshold').value,country:$('optCountry').value,
+    perfMode:$('optPerfMode').value
+  }};
+  const blob=new Blob([JSON.stringify(profile,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='cu_profile_v16.json';a.click();
+  toast('Perfil guardado','ok');
+});
+$('btnLoadProfile')?.addEventListener('click',()=>$('loadProfileInput').click());
+$('loadProfileInput')?.addEventListener('change',e=>{if(e.target.files.length)importConfig(e.target.files[0]);});
+$('btnResetAll')?.addEventListener('click',()=>{
+  if(confirm('Resetear todas las configuraciones?')){
+    localStorage.clear();location.reload();
+  }
+});
+
+// ── COLUMN MAPPING ───────────────────────────────────────────────
+const SYNONYMS={
+  firstName:['first name','nombre','first','given','fname','f_name','given_name','givenname'],
+  lastName:['last name','apellido','last','surname','lname','family','family_name','familyname'],
+  email:['e-mail 1 - value','e-mail','email','correo','mail','email_address','correo electronico'],
+  phone:['phone 1 - value','phone','telefono','celular','whatsapp','tel','movil','mobile','cell'],
+  company:['organization name','company','empresa','org','organizacion','organization','compania'],
+  title:['organization title','title','cargo','puesto','position','job','role','job_title']
+};
+function heuristic(headers){
+  const map={};
+  for(let[f,syns]of Object.entries(SYNONYMS))
+    for(let h of headers)
+      if(syns.some(s=>h.toLowerCase().includes(s))){map[f]=h;break;}
+  return map;
+}
+async function getMapping(headers){
+  const cfgOpts=cfg();
+  const key=headers.slice().sort().join('|');
+  if(colMapCache.has(key))return colMapCache.get(key);
+  const heur=heuristic(headers);
+  if(Object.keys(heur).length>=4||!cfgOpts.aiMapping){colMapCache.set(key,heur);return heur;}
+  
+  // Try consensus for better accuracy
+  const activeProviders=Object.values(PROVIDERS).filter(p=>(p.keys||[]).filter(k=>k).length>0);
+  if(activeProviders.length>=2){
+    try{
+      const ai=await callAIConsensus([
+        {role:'system',content:'Dado el array de columnas de un CSV de contactos, devuelve SOLO JSON con las claves: firstName, lastName, email, phone, company, title. Los valores deben ser los nombres exactos de las columnas. Si no existe un campo, omitirlo.'},
+        {role:'user',content:JSON.stringify(headers)}
+      ],['firstName','lastName','email','phone','company','title']);
+      const merged={...heur,...ai};colMapCache.set(key,merged);return merged;
+    }catch{colMapCache.set(key,heur);return heur;}
+  }else{
+    try{
+      const ai=await callAI([
+        {role:'system',content:'Dado el array de columnas de un CSV de contactos, devuelve SOLO JSON con las claves: firstName, lastName, email, phone, company, title. Los valores deben ser los nombres exactos de las columnas. Si no existe un campo, omitirlo.'},
+        {role:'user',content:JSON.stringify(headers)}
+      ]);
+      const merged={...heur,...ai};colMapCache.set(key,merged);return merged;
+    }catch{colMapCache.set(key,heur);return heur;}
+  }
+}
+
+// ── PHONE NORMALIZATION ──────────────────────────────────────────
+function bestPhone(arr,country){
+  let best='';
+  for(let raw of arr){
+    let c=String(raw||'').replace(/[^\d+]/g,'');
+    if(c.length<6)continue;
+    try{
+      const p=libphonenumber.parsePhoneNumber(c,country==='ZZ'?undefined:country);
+      if(p?.isValid()){best=p.format('E.164');break;}
+    }catch{}
+    if(!best&&c.length>=8)best=c;
+  }
+  return best?(best.startsWith('+')?best:'?'+best):'';
+}
+
+// ── CAPITALIZE ───────────────────────────────────────────────────
+function capitalize(s,mode){
+  if(!s)return '';
+  if(mode==='upper')return s.toUpperCase();
+  if(mode==='lower')return s.toLowerCase();
+  if(mode==='none')return s;
+  return s.toLowerCase().replace(/(?:^|\s|-)\S/g,c=>c.toUpperCase());
+}
+
+// ── CLEAN ONE CONTACT ────────────────────────────────────────────
+async function cleanContact(raw,mapping,cfgOpts){
+  const get=f=>mapping[f]?String(raw[mapping[f]]||'').trim():'';
+  let fn=get('firstName'),ln=get('lastName');
+  if(!fn&&!ln){
+    const full=raw['Name']||raw['Full Name']||raw['FN']||raw['Display Name']||raw.name||raw.full_name||'';
+    if(full){
+      if(cfgOpts.aiNames){
+        try{
+          const ai=await callAI([
+            {role:'system',content:'Divide este nombre completo en primer nombre y apellido. Devuelve SOLO JSON: {"nombre":"","apellido":""}'},
+            {role:'user',content:String(full)}
+          ]);
+          fn=ai.nombre||ai.firstName||'';ln=ai.apellido||ai.lastName||'';
+        }catch{}
+      }
+      if(!fn){
+        const pts=String(full).split(',');
+        if(pts.length===2){ln=pts[0].trim();fn=pts[1].trim();}
+        else{const ws=String(full).trim().split(/\s+/);fn=ws.slice(0,-1).join(' ')||ws[0];ln=ws.length>1?ws[ws.length-1]:'';}
+      }
+    }
+  }
+  const mode=cfgOpts.capitalize||'title';
+  fn=capitalize(fn,mode);ln=capitalize(ln,mode);
+  const empresa=capitalize(get('company'),mode);
+  const cargo=get('title');
+  const emailRaw=mapping.email?String(raw[mapping.email]||'').split(/[;,\|:::]+/):[];
+  let email=emailRaw.map(e=>e.trim().toLowerCase()).filter(e=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e))[0]||'';
+  // Fix common email typos
+  email=email.replace(/gmial\.com$/,'gmail.com').replace(/gmai\.com$/,'gmail.com').replace(/hotmal\.com$/,'hotmail.com');
+  const phonesRaw=mapping.phone?String(raw[mapping.phone]||'').split(/[;,\|:::]+/):[];
+  const whatsapp=bestPhone(phonesRaw,cfgOpts.country);
+  // Calculate confidence
+  let confidence=0;
+  if(whatsapp&&!whatsapp.startsWith('?'))confidence+=0.5;
+  else if(whatsapp)confidence+=0.2;
+  if(email)confidence+=0.3;
+  if(fn)confidence+=0.1;
+  if(ln)confidence+=0.1;
+  return{nombre:fn,apellido:ln,empresa,cargo,whatsapp,email,confidence:Math.min(1,confidence)};
+}
+
+// ── DEDUPLICATION ────────────────────────────────────────────────
+function buildGroups(contacts,threshold,fuzzy){
+  const exactMap=new Map();
+  contacts.forEach((c,i)=>{
+    const k=(c.whatsapp.replace(/\D/g,'')||'')+'|'+(c.email||'');
+    if(k!=='|'){if(!exactMap.has(k))exactMap.set(k,[]);exactMap.get(k).push(i);}
+  });
+  const exactGroups=Array.from(exactMap.values()).map(idxs=>idxs.map(i=>contacts[i]));
+  const inExact=new Set(exactGroups.flat().map(c=>contacts.indexOf(c)));
+  const singles=contacts.filter((_,i)=>!inExact.has(i));
+
+  const fuzzyGroups=[];
+  if(fuzzy&&threshold<1.0){
+    const sorted=[...singles].sort((a,b)=>(`${a.nombre}${a.apellido}`).localeCompare(`${b.nombre}${b.apellido}`));
+    const used=new Set();
+    for(let i=0;i<sorted.length;i++){
+      if(used.has(i))continue;
+      const group=[sorted[i]];used.add(i);
+      const nameA=`${sorted[i].nombre} ${sorted[i].apellido}`.trim().toLowerCase();
+      for(let j=i+1;j<Math.min(i+20,sorted.length);j++){
+        if(used.has(j))continue;
+        const nameB=`${sorted[j].nombre} ${sorted[j].apellido}`.trim().toLowerCase();
+        if(!nameA||!nameB)continue;
+        const sim=jaroWinklerSim(nameA,nameB);
+        if(sim>=threshold){group.push(sorted[j]);used.add(j);}
+      }
+      fuzzyGroups.push(group);
+    }
+  }else{
+    singles.forEach(c=>fuzzyGroups.push([c]));
+  }
+  return [...exactGroups,...fuzzyGroups];
+}
+
+// Jaro-Winkler (inline)
+function jaroWinklerSim(s1,s2){
+  if(s1===s2)return 1;
+  const l=Math.min(s1.length,s2.length);
+  const match_dist=Math.max(Math.floor(Math.max(s1.length,s2.length)/2)-1,0);
+  const s1m=new Array(s1.length).fill(false);
+  const s2m=new Array(s2.length).fill(false);
+  let matches=0,transpositions=0;
+  for(let i=0;i<s1.length;i++){
+    const lo=Math.max(0,i-match_dist);const hi=Math.min(i+match_dist+1,s2.length);
+    for(let j=lo;j<hi;j++){if(s2m[j]||s1[i]!==s2[j])continue;s1m[i]=s2m[j]=true;matches++;break;}
+  }
+  if(!matches)return 0;
+  let k=0;
+  for(let i=0;i<s1.length;i++){if(!s1m[i])continue;while(!s2m[k])k++;if(s1[i]!==s2[k])transpositions++;k++;}
+  const jaro=(matches/s1.length+matches/s2.length+(matches-transpositions/2)/matches)/3;
+  const prefix=Math.min(4,[...Array(l)].filter((_,i)=>s1[i]===s2[i]).length);
+  return jaro+prefix*0.1*(1-jaro);
+}
+
+function mergeGroup(group){
+  const fields=['nombre','apellido','empresa','cargo','whatsapp','email'];
+  const best=group.reduce((a,b)=>fields.reduce((s,f)=>s+(b[f]?1:0),0)>fields.reduce((s,f)=>s+(a[f]?1:0),0)?b:a);
+  const merged={...best};
+  group.forEach(c=>fields.forEach(f=>{if(!merged[f]&&c[f])merged[f]=c[f];}));
+  merged.confidence=Math.max(...group.map(c=>c.confidence||0));
+  return merged;
+}
+
+async function deduplicate(contacts,cfgOpts){
+  if(!cfgOpts.dedup)return contacts;
+  const groups=buildGroups(contacts,cfgOpts.threshold,cfgOpts.fuzzy);
+  const dupGroups=groups.filter(g=>g.length>1);
+  if(cfgOpts.review&&dupGroups.length){
+    pendingDupeGroups=dupGroups;
+    return await new Promise(resolve=>{
+      dupeCallback=resolve;
+      showDupeModal(dupGroups,groups,contacts.length);
+    });
+  }
+  const result=[];
+  groups.forEach(g=>{
+    if(g.length===1)result.push(g[0]);
+    else{result.push(mergeGroup(g));statsDups+=g.length-1;}
+  });
+  return result;
+}
+
+function showDupeModal(dupGroups,allGroups,totalOrig){
+  const checks=dupGroups.map(()=>true);
+  $('dupeGroups').innerHTML=dupGroups.slice(0,100).map((g,i)=>{
+    const m=mergeGroup(g);
+    return`<div class="dupe-group">
+      <label><input type="checkbox" checked data-idx="${i}"> Grupo ${i+1} - ${g.length} contactos</label>
+      <div class="dupe-merged">-> ${m.nombre} ${m.apellido} | ${m.whatsapp} | ${m.email}</div>
+      <div class="dupe-origs">${g.map(c=>`${c.nombre} ${c.apellido}`).join(' | ')}</div>
+    </div>`;
+  }).join('');
+  if(dupGroups.length>100)$('dupeGroups').innerHTML+=`<p style="color:var(--text3);font-size:12px">... y ${dupGroups.length-100} grupos mas (se fusionan automaticamente)</p>`;
+  $('dupeModal').classList.add('open');
+  document.querySelectorAll('#dupeGroups [data-idx]').forEach(cb=>cb.addEventListener('change',e=>{checks[parseInt(e.target.dataset.idx)]=e.target.checked;}));
+  $('btnApplyDupe').onclick=()=>{
+    $('dupeModal').classList.remove('open');
+    const result=[];
+    allGroups.forEach(g=>{
+      if(g.length===1)result.push(g[0]);
+      else{const idx=dupGroups.indexOf(g);
+        if(idx>=0&&idx<100&&checks[idx]){result.push(mergeGroup(g));statsDups+=g.length-1;}
+        else if(idx>=100){result.push(mergeGroup(g));statsDups+=g.length-1;}
+        else g.forEach(c=>result.push(c));
+      }
+    });
+    dupeCallback(result);
+  };
+  $('btnCancelDupe').onclick=()=>{
+    $('dupeModal').classList.remove('open');
+    const result=[];
+    allGroups.forEach(g=>{
+      if(g.length===1)result.push(g[0]);
+      else{result.push(mergeGroup(g));statsDups+=g.length-1;}
+    });
+    dupeCallback(result);
+  };
+}
+
+// ── PARSERS ───────────────────────────────────────────────────────
+function parseCSV(f){
+  return new Promise(r=>Papa.parse(f,{
+    header:true,skipEmptyLines:true,
+    complete:d=>r(d.data.map(o=>{const n={};Object.entries(o).forEach(([k,v])=>n[k.trim()]=v);return n;})),
+    error:()=>r([])
+  }));
+}
+function parseExcel(f){
+  return new Promise(r=>{
+    const reader=new FileReader();
+    reader.onload=e=>{
+      const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
+      const rows=[];
+      wb.SheetNames.forEach(name=>{
+        const s=wb.Sheets[name];const raw=XLSX.utils.sheet_to_json(s,{header:1});
+        if(raw.length<2)return;
+        const h=raw[0].map(c=>String(c||'').trim());
+        for(let i=1;i<raw.length;i++){const obj={};h.forEach((k,j)=>obj[k]=raw[i][j]??'');rows.push(obj);}
+      });
+      r(rows);
+    };
+    reader.readAsArrayBuffer(f);
+  });
+}
+function parseVCF(f){
+  return new Promise(r=>{
+    const reader=new FileReader();
+    reader.onload=e=>{
+      const vcards=e.target.result.split(/END:VCARD/i).filter(v=>v.includes('BEGIN:VCARD'));
+      r(vcards.map(v=>{
+        const obj={};let fn='';
+        v.split(/\r?\n/).forEach(l=>{
+          const ci=l.indexOf(':');if(ci<0)return;
+          const prop=l.slice(0,ci).toUpperCase().split(';')[0];
+          const val=l.slice(ci+1).trim();
+          if(prop==='FN')fn=val;
+          else if(prop==='N'){const p=val.split(';');obj['Last Name']=p[0];obj['First Name']=p[1]||'';}
+          else if(prop==='ORG')obj['Organization Name']=val;
+          else if(prop==='TITLE')obj['Organization Title']=val;
+          else if(prop==='TEL')obj['Phone 1 - Value']=obj['Phone 1 - Value']||val;
+          else if(prop==='EMAIL')obj['E-mail 1 - Value']=obj['E-mail 1 - Value']||val;
+        });
+        if(!obj['First Name']&&fn){const p=fn.trim().split(/\s+/);obj['First Name']=p.slice(0,-1).join(' ')||fn;obj['Last Name']=p.length>1?p[p.length-1]:'';}
+        return obj;
+      }));
+    };
+    reader.readAsText(f);
+  });
+}
+async function parseFile(f){
+  const ext=f.name.split('.').pop().toLowerCase();
+  if(ext==='csv'||ext==='txt')return parseCSV(f);
+  if(ext==='xlsx'||ext==='xls')return parseExcel(f);
+  if(ext==='vcf'||ext==='vcard')return parseVCF(f);
+  return[];
+}
+
+// ── FILE HANDLING ─────────────────────────────────────────────────
+async function traverseFixed(entry,path=''){
+  if(entry.isFile){return new Promise(res=>entry.file(f=>res([{file:f,relativePath:path+f.name}])));}
+  if(entry.isDirectory){
+    const reader=entry.createReader();
+    const allEntries=[];
+    const readBatch=()=>new Promise(res=>reader.readEntries(batch=>{allEntries.push(...batch);res(batch.length>0);}));
+    while(await readBatch());
+    const files=[];
+    for(let e of allEntries)files.push(...await traverseFixed(e,path+entry.name+'/'));
+    return files;
+  }
+  return[];
+}
+async function handleDrop(e){
+  e.preventDefault();$('dropzone').classList.remove('dragover');
+  const items=e.dataTransfer.items;const newFiles=[];
+  for(let item of items){
+    if(item.kind==='file'){
+      const entry=item.webkitGetAsEntry();
+      if(entry)newFiles.push(...await traverseFixed(entry));
+      else{const f=item.getAsFile();newFiles.push({file:f,relativePath:f.name});}
+    }
+  }
+  addFiles(newFiles);
+}
+function addFiles(files){
+  const supported=files.filter(f=>/\.(csv|txt|xlsx|xls|vcf|vcard)$/i.test(f.file.name));
+  if(!supported.length){toast('Sin archivos compatibles','err');return;}
+  allFiles.push(...supported);
+  const byExt={};
+  allFiles.forEach(f=>{const ext=f.file.name.split('.').pop().toLowerCase();byExt[ext]=(byExt[ext]||0)+1;});
+  $('fileChips').innerHTML=`<span class="file-chip">${allFiles.length} archivos</span>`
+    +Object.entries(byExt).map(([e,c])=>`<span class="file-chip">.${e} x${c}</span>`).join('');
+  $('btnProcess').disabled=false;
+  log(`${supported.length} archivos anadidos. Total: ${allFiles.length}`,'ok');
+  toast(`${supported.length} archivos anadidos`,'ok');
+}
+$('dropzone').addEventListener('dragover',e=>{e.preventDefault();$('dropzone').classList.add('dragover');});
+$('dropzone').addEventListener('dragleave',()=>$('dropzone').classList.remove('dragover'));
+$('dropzone').addEventListener('drop',handleDrop);
+$('btnFolder').addEventListener('click',()=>$('folderInput').click());
+$('btnFiles').addEventListener('click',()=>$('filesInput').click());
+$('folderInput').addEventListener('change',e=>{addFiles(Array.from(e.target.files).map(f=>({file:f,relativePath:f.webkitRelativePath})));$('folderInput').value='';});
+$('filesInput').addEventListener('change',e=>{addFiles(Array.from(e.target.files).map(f=>({file:f,relativePath:f.name})));$('filesInput').value='';});
+
+// ── PROGRESS ─────────────────────────────────────────────────────
+function setProgress(done,total,sub=''){
+  const pct=total?Math.round(done/total*100):0;
+  $('progressBar').style.width=pct+'%';
+  $('progressPct').textContent=pct+'%';
+  $('progressText').textContent=`Archivos ${done}/${total}`;
+  if(sub)$('progressSub').textContent=sub;
+}
+
+// ── MAIN PROCESSING ──────────────────────────────────────────────
+async function processAll(){
+  const cfgOpts=cfg();
+  cleanedContacts=[];statsDups=0;statsTotal=0;statsUnique=0;
+  consensusStats={ok:0,err:0,timeout:0};
+  const total=allFiles.length;
+
+  const batchSize=cfgOpts.perfMode==='extreme'?500:cfgOpts.perfMode==='turbo'?200:50;
+
+  for(let i=0;i<allFiles.length;i++){
+    if(globalAbortController?.signal.aborted)throw new Error('Cancelado');
+    while(isPaused)await new Promise(r=>setTimeout(r,200));
+    const item=allFiles[i];
+    log(`Procesando: ${item.relativePath}`);
+    const raw=await parseFile(item.file);
+    if(!raw.length){setProgress(i+1,total,'Archivo vacio');continue;}
+    statsTotal+=raw.length;
+    const mapping=await getMapping(Object.keys(raw[0]));
+    
+    for(let j=0;j<raw.length;j+=batchSize){
+      if(globalAbortController?.signal.aborted)throw new Error('Cancelado');
+      while(isPaused)await new Promise(r=>setTimeout(r,200));
+      const chunk=raw.slice(j,j+batchSize);
+      for(let row of chunk){
+        const c=await cleanContact(row,mapping,cfgOpts);
+        if(!c.whatsapp&&!c.email){continue;}
+        cleanedContacts.push(c);
+      }
+      $('progressSub').textContent=`${cleanedContacts.length} contactos leidos...`;
+      await new Promise(r=>setTimeout(r,0));
+    }
+    setProgress(i+1,total);
+  }
+
+  log(`${statsTotal} leidos. Deduplicando...`,'ok');
+  $('progressText').textContent='Deduplicando...';$('progressBar').style.width='95%';
+
+  cleanedContacts=await deduplicate(cleanedContacts,cfgOpts);
+  statsUnique=cleanedContacts.length;
+  filteredContacts=[...cleanedContacts];
+  updateStats();
+  renderResults();
+  log(`Listo: ${statsUnique} unicos, ${statsDups} dups quitados`,'ok');
+}
+
+// ── PROCESS BUTTON ────────────────────────────────────────────────
+$('btnProcess').addEventListener('click',async()=>{
+  if(!allFiles.length)return;
+  isProcessing=true;isPaused=false;
+  globalAbortController=new AbortController();
+  $('btnProcess').disabled=true;$('btnPause').disabled=false;
+  $('btnCancel').style.display='inline-flex';
+  $('progressCard').style.display='block';
+  $('progressBar').style.width='0';
+  try{
+    await processAll();
+    toast(`${statsUnique} contactos procesados`,'ok');
+    showSection('sec-results',document.querySelector('[data-section="sec-results"]'));
+  }catch(e){
+    log(`Error: ${e.message}`,'err');toast(e.message,'err');
+  }finally{
+    isProcessing=false;
+    globalAbortController=null;
+    $('btnProcess').disabled=allFiles.length===0;
+    $('btnPause').disabled=true;
+    $('btnCancel').style.display='none';
+    $('progressCard').style.display='none';
+  }
+});
+$('btnPause').addEventListener('click',()=>{
+  isPaused=!isPaused;
+  $('btnPause').textContent=isPaused?'Reanudar':'Pausar';
+  log(isPaused?'Pausado':'Reanudado','inf');
+});
+$('btnCancel').addEventListener('click',()=>{
+  globalAbortController?.abort();
+  log('Cancelando...','warn');
+});
+$('btnClear').addEventListener('click',()=>{
+  if(isProcessing&&!confirm('Cancelar procesamiento?'))return;
+  globalAbortController?.abort();
+  allFiles=[];cleanedContacts=[];filteredContacts=[];
+  statsTotal=statsUnique=statsDups=statsAICalls=0;
+  consensusStats={ok:0,err:0,timeout:0};
+  $('fileChips').innerHTML='';$('btnProcess').disabled=true;
+  $('tableBody').innerHTML='';$('resultCard').style.display='none';
+  $('emptyResults').style.display='block';
+  $('consensusStats').style.display='none';
+  colMapCache.clear();updateStats();
+  log('Todo limpio');toast('Limpiado');
+});
+
+// ── RESULTS TABLE ──────────────────────────────────────────────────
+$('searchInput').addEventListener('input',()=>{
+  const q=$('searchInput').value.toLowerCase().trim();
+  filteredContacts=cleanedContacts.filter(c=>!q||Object.values(c).some(v=>String(v).toLowerCase().includes(q)));
+  currentPage=1;renderTable();
+  $('resultCount').textContent=filteredContacts.length+' contacto'+(filteredContacts.length!==1?'s':'');
+});
+document.querySelectorAll('thead th[data-col]').forEach(th=>{
+  th.addEventListener('click',()=>{
+    const col=th.dataset.col;
+    if(sortCol===col)sortAsc=!sortAsc;else{sortCol=col;sortAsc=true;}
+    document.querySelectorAll('.sort-arrow').forEach(a=>{a.className='sort-arrow';a.textContent='';});
+    const arrow=document.getElementById('sort-'+col);
+    if(arrow){arrow.className='sort-arrow active';arrow.textContent=sortAsc?' ^':' v';}
+    filteredContacts.sort((a,b)=>{
+      const av=(a[col]||'').toString().toLowerCase(),bv=(b[col]||'').toString().toLowerCase();
+      return sortAsc?av.localeCompare(bv,'es'):bv.localeCompare(av,'es');
+    });
+    currentPage=1;renderTable();
+  });
+});
+
+function renderResults(){
+  if(!cleanedContacts.length){
+    $('resultCard').style.display='none';
+    $('emptyResults').style.display='block';
+    return;
+  }
+  $('emptyResults').style.display='none';
+  $('resultCard').style.display='block';
+  filteredContacts=[...cleanedContacts];
+  $('resultCount').textContent=filteredContacts.length+' contactos';
+  renderTable();
+}
+function renderTable(){
+  const pageSize=parseInt($('cfgPageSize')?.value)||100;
+  const start=(currentPage-1)*pageSize;
+  const page=filteredContacts.slice(start,start+pageSize);
+  $('tableBody').innerHTML=page.map(c=>`<tr>
+    <td title="${esc(c.nombre)}">${esc(c.nombre)}</td>
+    <td title="${esc(c.apellido)}">${esc(c.apellido)}</td>
+    <td title="${esc(c.empresa)}">${esc(c.empresa)}</td>
+    <td>${esc(c.cargo)}</td>
+    <td><span style="font-family:var(--mono);font-size:12px">${esc(c.whatsapp)}</span></td>
+    <td><a href="mailto:${esc(c.email)}" style="color:var(--blue);text-decoration:none;font-size:12px">${esc(c.email)}</a></td>
+    <td><span class="pill ${c.confidence>=0.8?'pill-green':c.confidence>=0.5?'pill-blue':'pill-orange'}">${Math.round((c.confidence||0)*100)}%</span></td>
+  </tr>`).join('');
+  renderPagination(pageSize);
+}
+function renderPagination(pageSize){
+  const total=Math.ceil(filteredContacts.length/pageSize);
+  if(total<=1){$('pagination').innerHTML='';return;}
+  let html='';
+  if(currentPage>1)html+=`<button class="page-btn" onclick="goPage(${currentPage-1})"><-</button>`;
+  const lo=Math.max(1,currentPage-2),hi=Math.min(total,currentPage+2);
+  if(lo>1)html+=`<button class="page-btn" onclick="goPage(1)">1</button>${lo>2?'<span class="page-info">...</span>':''}`;
+  for(let i=lo;i<=hi;i++)html+=`<button class="page-btn${i===currentPage?' active':''}" onclick="goPage(${i})">${i}</button>`;
+  if(hi<total)html+=`${hi<total-1?'<span class="page-info">...</span>':''}<button class="page-btn" onclick="goPage(${total})">${total}</button>`;
+  if(currentPage<total)html+=`<button class="page-btn" onclick="goPage(${currentPage+1})">-></button>`;
+  $('pagination').innerHTML=html;
+}
+function goPage(p){currentPage=p;renderTable();window.scrollTo(0,0);}
+window.goPage=goPage;
+
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+// ── EXPORT ────────────────────────────────────────────────────────
+function getData(){return($('searchInput').value?filteredContacts:cleanedContacts);}
+function dl(content,name,type){const b=new Blob([content],{type});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=name;a.click();}
+
+$('btnExportCSV').addEventListener('click',()=>{
+  const data=getData();if(!data.length)return;
+  const sep=$('cfgSep')?.value||',';
+  const q=s=>`"${String(s||'').replace(/"/g,'""')}"`;
+  const csv=['\uFEFF'+['Nombre','Apellido','Empresa','Cargo','WhatsApp','Email','Confianza'].join(sep)]
+    .concat(data.map(c=>[c.nombre,c.apellido,c.empresa,c.cargo,c.whatsapp,c.email,Math.round((c.confidence||0)*100)+'%'].map(q).join(sep))).join('\n');
+  dl(csv,'contactos_limpios_v16.csv','text/csv;charset=utf-8;');
+  log(`CSV exportado (${data.length} filas)`,'ok');toast('CSV exportado','ok');
+});
+$('btnExportJSON').addEventListener('click',()=>{
+  const data=getData();if(!data.length)return;
+  dl(JSON.stringify(data,null,2),'contactos_limpios_v16.json','application/json');
+  log(`JSON exportado`,'ok');toast('JSON exportado','ok');
+});
+$('btnExportVCF').addEventListener('click',()=>{
+  const data=getData();if(!data.length)return;
+  const vcf=data.map(c=>[
+    'BEGIN:VCARD','VERSION:3.0',`N:${c.apellido};${c.nombre};;;`,`FN:${c.nombre} ${c.apellido}`,
+    c.empresa?`ORG:${c.empresa}`:'',c.cargo?`TITLE:${c.cargo}`:'',
+    c.whatsapp?`TEL;TYPE=CELL:${c.whatsapp}`:'',c.email?`EMAIL:${c.email}`:'','END:VCARD'
+  ].filter(Boolean).join('\n')).join('\n');
+  dl(vcf,'contactos_v16.vcf','text/vcard');
+  log(`VCF exportado (${data.length} vCards)`,'ok');toast('VCF exportado','ok');
+});
+$('btnExportGContacts').addEventListener('click',()=>{
+  const data=getData();if(!data.length)return;
+  const q=s=>`"${String(s||'').replace(/"/g,'""')}"`;
+  const headers='Name,Given Name,Family Name,Organization 1 - Name,Organization 1 - Title,Phone 1 - Value,E-mail 1 - Value';
+  const rows=data.map(c=>[
+    `${c.nombre} ${c.apellido}`.trim(),c.nombre,c.apellido,c.empresa,c.cargo,c.whatsapp,c.email
+  ].map(q).join(','));
+  dl('\uFEFF'+[headers,...rows].join('\n'),'google_contacts_v16.csv','text/csv;charset=utf-8;');
+  log(`Google Contacts CSV exportado`,'ok');toast('Google Contacts CSV exportado','ok');
+});
+$('btnExportXLSX').addEventListener('click',()=>{
+  const data=getData();if(!data.length)return;
+  const ws=XLSX.utils.json_to_sheet(data.map(c=>({
+    Nombre:c.nombre,Apellido:c.apellido,Empresa:c.empresa,Cargo:c.cargo,WhatsApp:c.whatsapp,Email:c.email,Confianza:Math.round((c.confidence||0)*100)+'%'
+  })));
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Contactos');
+  XLSX.writeFile(wb,'contactos_limpios_v16.xlsx');
+  log(`XLSX exportado`,'ok');toast('Excel exportado','ok');
+});
+
+// ── INIT ──────────────────────────────────────────────────────────
+loadProviders();
+renderProviders();
+log('ContactUnifier Pro v16.0 Stable - Listo - Consenso Multi-IA','ok');
+log('Soporta: Groq, OpenAI, Gemini, Claude, Mistral, Together, Perplexity, DeepSeek, Fireworks, xAI, OpenRouter, Cohere + Ollama local','inf');
+log('Timeout: 15s por llamada | AbortController global | Votacion por mayoria','inf');
+updateStats();
+
+})();
+</script>
+</body>
+</html>
