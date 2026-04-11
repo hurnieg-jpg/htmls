@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>CRM Inteligente</title>
+<style>
+body{font-family:Arial;margin:20px;background:#f5f6fa}
+.header{font-size:24px;font-weight:bold;margin-bottom:20px}
+.section{background:white;padding:15px;margin-bottom:15px;border-radius:8px}
+button{padding:10px 15px;margin:5px}
+table{width:100%;border-collapse:collapse}
+td,th{border:1px solid #ddd;padding:8px}
+</style>
+</head>
+<body>
+
+<div class="header">CRM Inteligente</div>
+
+<div class="section">
+<h3>Contactos</h3>
+<button onclick="addContact()">Agregar Contacto</button>
+<button onclick="runAI()">Limpieza IA</button>
+<table id="contacts">
+<tr>
+<th>Nombre</th>
+<th>Empresa</th>
+<th>WhatsApp</th>
+<th>Email</th>
+<th>Estado</th>
+</tr>
+</table>
+</div>
+
+<div class="section">
+<h3>Pipeline</h3>
+<select id="pipeline">
+<option>Lead</option>
+<option>Contactado</option>
+<option>Cotización</option>
+<option>Seguimiento</option>
+<option>Ganado</option>
+<option>Perdido</option>
+</select>
+</div>
+
+<script>
+
+window.contacts = [];
+
+function addContact(){
+
+const name = prompt('Nombre');
+const company = prompt('Empresa');
+const phone = prompt('WhatsApp');
+
+const contact = {name,company,phone};
+
+window.contacts.push(contact);
+
+render();
+
+}
+
+function render(){
+
+const table = document.getElementById('contacts');
+
+table.innerHTML = `
+<tr>
+<th>Nombre</th>
+<th>Empresa</th>
+<th>WhatsApp</th>
+<th>Email</th>
+<th>Estado</th>
+</tr>
+`;
+
+window.contacts.forEach(c=>{
+
+const row = document.createElement('tr');
+
+row.innerHTML = `
+<td>${c.name||''}</td>
+<td>${c.company||''}</td>
+<td>${c.phone||''}</td>
+<td>${c.email||''}</td>
+<td>Lead</td>
+`;
+
+ table.appendChild(row);
+
+});
+
+}
+
+async function runAI(){
+
+if(window.runFullAI){
+await window.runFullAI(window.contacts);
+render();
+}
+
+}
+
+</script>
+
+</body>
+</html>
